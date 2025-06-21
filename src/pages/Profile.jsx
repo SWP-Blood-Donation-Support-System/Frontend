@@ -1,43 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaTint, FaHistory, FaEdit } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaTint, FaHistory, FaEdit, FaIdCard } from 'react-icons/fa';
+import { getUser } from '../utils/api';
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const { register, handleSubmit, formState: { errors } } = useForm();
 
-  // Mock user data
-  const userData = {
-    fullName: 'Nguyễn Văn A',
-    email: 'nguyenvana@email.com',
-    phone: '0123456789',
-    address: '123 Đường ABC, Quận 1, TP.HCM',
-    bloodType: 'A+',
-    lastDonation: '2024-01-15',
-    totalDonations: 5,
-  };
+  useEffect(() => {
+    const user = getUser();
+    if (user) {
+      setUserData(user);
+      console.log('User data from localStorage:', user);
+    }
+    setLoading(false);
+  }, []);
 
-  // Mock donation history
+  // Mock donation history (có thể thay bằng API call sau)
   const donationHistory = [
     {
       id: 1,
       date: '2024-01-15',
       location: 'Bệnh viện Chợ Rẫy',
-      bloodType: 'A+',
+      bloodType: userData?.bloodType || 'A+',
       status: 'completed',
     },
     {
       id: 2,
       date: '2023-10-20',
       location: 'Bệnh viện Nhân dân 115',
-      bloodType: 'A+',
+      bloodType: userData?.bloodType || 'A+',
       status: 'completed',
     },
     {
       id: 3,
       date: '2023-07-15',
       location: 'Bệnh viện Đại học Y Dược',
-      bloodType: 'A+',
+      bloodType: userData?.bloodType || 'A+',
       status: 'completed',
     },
   ];
@@ -53,6 +54,28 @@ const Profile = () => {
       alert('Có lỗi xảy ra. Vui lòng thử lại sau.');
     }
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-red-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Đang tải thông tin cá nhân...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!userData) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Thông tin cá nhân</h1>
+          <p className="text-gray-600">Không tìm thấy thông tin người dùng. Vui lòng đăng nhập lại.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -76,6 +99,24 @@ const Profile = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Username
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaIdCard className="text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    defaultValue={userData.username}
+                    disabled
+                    className="input pl-10 bg-gray-100"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Username không thể thay đổi</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Họ và tên
                 </label>
                 <div className="relative">
@@ -84,7 +125,7 @@ const Profile = () => {
                   </div>
                   <input
                     type="text"
-                    defaultValue={userData.fullName}
+                    defaultValue={userData.fullName || userData.name || ''}
                     {...register('fullName', { required: 'Vui lòng nhập họ tên' })}
                     className="input pl-10"
                   />
@@ -104,7 +145,7 @@ const Profile = () => {
                   </div>
                   <input
                     type="email"
-                    defaultValue={userData.email}
+                    defaultValue={userData.email || ''}
                     {...register('email', {
                       required: 'Vui lòng nhập email',
                       pattern: {
@@ -130,7 +171,7 @@ const Profile = () => {
                   </div>
                   <input
                     type="tel"
-                    defaultValue={userData.phone}
+                    defaultValue={userData.phoneNumber || userData.phone || ''}
                     {...register('phone', {
                       required: 'Vui lòng nhập số điện thoại',
                       pattern: {
@@ -156,7 +197,7 @@ const Profile = () => {
                   </div>
                   <input
                     type="text"
-                    defaultValue={userData.address}
+                    defaultValue={userData.address || ''}
                     {...register('address', { required: 'Vui lòng nhập địa chỉ' })}
                     className="input pl-10"
                   />
@@ -164,6 +205,41 @@ const Profile = () => {
                 {errors.address && (
                   <p className="mt-1 text-sm text-red-600">{errors.address.message}</p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nhóm máu
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaTint className="text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    defaultValue={userData.bloodType || ''}
+                    {...register('bloodType')}
+                    className="input pl-10"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Vai trò
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaUser className="text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    defaultValue={userData.role || ''}
+                    disabled
+                    className="input pl-10 bg-gray-100"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Vai trò không thể thay đổi</p>
               </div>
             </div>
 
@@ -176,10 +252,18 @@ const Profile = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex items-center space-x-4">
+              <FaIdCard className="text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-600">Username</p>
+                <p className="font-medium">{userData.username || 'N/A'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4">
               <FaUser className="text-gray-400" />
               <div>
                 <p className="text-sm text-gray-600">Họ và tên</p>
-                <p className="font-medium">{userData.fullName}</p>
+                <p className="font-medium">{userData.fullName || userData.name || 'N/A'}</p>
               </div>
             </div>
 
@@ -187,7 +271,7 @@ const Profile = () => {
               <FaEnvelope className="text-gray-400" />
               <div>
                 <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium">{userData.email}</p>
+                <p className="font-medium">{userData.email || 'N/A'}</p>
               </div>
             </div>
 
@@ -195,7 +279,7 @@ const Profile = () => {
               <FaPhone className="text-gray-400" />
               <div>
                 <p className="text-sm text-gray-600">Số điện thoại</p>
-                <p className="font-medium">{userData.phone}</p>
+                <p className="font-medium">{userData.phoneNumber || userData.phone || 'N/A'}</p>
               </div>
             </div>
 
@@ -203,7 +287,7 @@ const Profile = () => {
               <FaMapMarkerAlt className="text-gray-400" />
               <div>
                 <p className="text-sm text-gray-600">Địa chỉ</p>
-                <p className="font-medium">{userData.address}</p>
+                <p className="font-medium">{userData.address || 'N/A'}</p>
               </div>
             </div>
 
@@ -211,20 +295,50 @@ const Profile = () => {
               <FaTint className="text-gray-400" />
               <div>
                 <p className="text-sm text-gray-600">Nhóm máu</p>
-                <p className="font-medium">{userData.bloodType}</p>
+                <p className="font-medium">{userData.bloodType || 'N/A'}</p>
               </div>
             </div>
 
             <div className="flex items-center space-x-4">
-              <FaHistory className="text-gray-400" />
+              <FaUser className="text-gray-400" />
               <div>
-                <p className="text-sm text-gray-600">Lần hiến máu gần nhất</p>
-                <p className="font-medium">{userData.lastDonation}</p>
+                <p className="text-sm text-gray-600">Vai trò</p>
+                <p className="font-medium">{userData.role || 'N/A'}</p>
               </div>
             </div>
+
+            {userData.userId && (
+              <div className="flex items-center space-x-4">
+                <FaIdCard className="text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-600">User ID</p>
+                  <p className="font-medium">{userData.userId}</p>
+                </div>
+              </div>
+            )}
+
+            {userData.dateOfBirth && (
+              <div className="flex items-center space-x-4">
+                <FaHistory className="text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-600">Ngày sinh</p>
+                  <p className="font-medium">{userData.dateOfBirth}</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Debug Info
+      <div className="card mb-8">
+        <h3 className="text-lg font-semibold mb-4">Thông tin Debug</h3>
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <pre className="text-xs text-gray-700 overflow-auto">
+            {JSON.stringify(userData, null, 2)}
+          </pre>
+        </div>
+      </div> */}
 
       {/* Donation History */}
       <div className="card">
