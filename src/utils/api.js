@@ -379,4 +379,387 @@ export const logout = () => {
 // Check if user is authenticated
 export const isAuthenticated = () => {
   return !!getAuthToken();
+};
+
+// Get registered participants by event ID (for staff/admin)
+export const getRegisteredParticipantsByEventId = async (eventId) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để xem danh sách người tham gia');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/BloodDonationProcess/GetRegisterListByEventID/${eventId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to fetch registered participants: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching registered participants:', error);
+    throw error;
+  }
+};
+
+// Check-in participant (for staff/admin)
+export const checkinParticipant = async (appointmentId) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để thực hiện check-in');
+    }
+
+    console.log('Checking in participant:', appointmentId);
+
+    const response = await fetch(`${API_BASE_URL}/BloodDonationProcess/Checkin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ appointmentId: appointmentId })
+    });
+
+    console.log('Check-in response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Check-in error response:', errorData);
+      
+      // Handle specific error cases
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu check-in không hợp lệ');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy lịch hẹn');
+      } else if (response.status === 409) {
+        throw new Error('Người tham gia đã được check-in trước đó');
+      } else {
+        throw new Error(errorData.message || `Lỗi check-in: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Check-in successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error checking in participant:', error);
+    throw error;
+  }
+};
+
+// Record donation (for staff/admin)
+export const recordDonation = async (appointmentId, bloodType, donationVolume) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để ghi nhận hiến máu');
+    }
+
+    console.log('Recording donation:', { appointmentId, bloodType, donationVolume });
+
+    const response = await fetch(`${API_BASE_URL}/BloodDonationProcess/RecordDonation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ 
+        appointmentId: appointmentId,
+        bloodType: bloodType,
+        donationVolume: donationVolume
+      })
+    });
+
+    console.log('Record donation response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Record donation error response:', errorData);
+      
+      // Handle specific error cases
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu ghi nhận hiến máu không hợp lệ');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy lịch hẹn');
+      } else if (response.status === 409) {
+        throw new Error('Hiến máu đã được ghi nhận trước đó');
+      } else {
+        throw new Error(errorData.message || `Lỗi ghi nhận hiến máu: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Record donation successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error recording donation:', error);
+    throw error;
+  }
+};
+
+// Blog Management APIs
+// Create a new blog post
+export const createBlogPost = async (blogData) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để tạo bài viết blog');
+    }
+
+    console.log('Creating blog post:', blogData);
+
+    const response = await fetch(`${API_BASE_URL}/Blog/CreateBlog`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(blogData)
+    });
+
+    console.log('Create blog response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Create blog error response:', errorData);
+      
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu bài viết không hợp lệ');
+      } else if (response.status === 401) {
+        throw new Error('Bạn không có quyền tạo bài viết blog');
+      } else {
+        throw new Error(errorData.message || `Lỗi tạo bài viết: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Create blog successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error creating blog post:', error);
+    throw error;
+  }
+};
+
+// Get all blog posts
+export const getAllBlogPosts = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/Blog`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to fetch blogs: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching blog posts:', error);
+    throw error;
+  }
+};
+
+// Get blog post by ID
+export const getBlogPostById = async (blogId) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/Blog/GetBlogById/${blogId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to fetch blog: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching blog post:', error);
+    throw error;
+  }
+};
+
+// Update blog post
+export const updateBlogPost = async (blogId, blogData) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để cập nhật bài viết blog');
+    }
+
+    console.log('Updating blog post:', { blogId, blogData });
+
+    const response = await fetch(`${API_BASE_URL}/Blog/UpdateBlog/${blogId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(blogData)
+    });
+
+    console.log('Update blog response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Update blog error response:', errorData);
+      
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu cập nhật không hợp lệ');
+      } else if (response.status === 401) {
+        throw new Error('Bạn không có quyền cập nhật bài viết này');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy bài viết blog');
+      } else {
+        throw new Error(errorData.message || `Lỗi cập nhật bài viết: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Update blog successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error updating blog post:', error);
+    throw error;
+  }
+};
+
+// Delete blog post
+export const deleteBlogPost = async (blogId) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để xóa bài viết blog');
+    }
+
+    console.log('Deleting blog post:', blogId);
+
+    const response = await fetch(`${API_BASE_URL}/Blog/DeleteBlog/${blogId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    console.log('Delete blog response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Delete blog error response:', errorData);
+      
+      if (response.status === 401) {
+        throw new Error('Bạn không có quyền xóa bài viết này');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy bài viết blog');
+      } else {
+        throw new Error(errorData.message || `Lỗi xóa bài viết: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Delete blog successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error deleting blog post:', error);
+    throw error;
+  }
+};
+
+// Get blog posts by author
+export const getBlogPostsByAuthor = async (username) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/Blog/GetBlogsByAuthor/${username}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to fetch author blogs: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching author blog posts:', error);
+    throw error;
+  }
+};
+
+// Get blood inventory
+export const getBloodInventory = async () => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để xem thông tin kho máu');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/blood-inventory`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to fetch blood inventory: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching blood inventory:', error);
+    throw error;
+  }
+};
+
+// Get all reports
+export const getAllReports = async () => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để xem báo cáo');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/Report/GetAllReports`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to fetch reports: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching reports:', error);
+    throw error;
+  }
 }; 

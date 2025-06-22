@@ -14,7 +14,10 @@ import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Events from './pages/Events';
+import BloodDonationManagement from './pages/BloodDonationManagement';
 import AppointmentHistory from './pages/AppointmentHistory';
+import CreateBlog from './pages/CreateBlog';
+import BlogManagement from './pages/BlogManagement';
 
 const queryClient = new QueryClient();
 
@@ -57,6 +60,21 @@ function App() {
               } />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/blood-donation-management" element={
+                <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+                  <BloodDonationManagement />
+                </RoleBasedRoute>
+              } />
+              <Route path="/create-blog" element={
+                <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+                  <CreateBlog />
+                </RoleBasedRoute>
+              } />
+              <Route path="/blog-management" element={
+                <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+                  <BlogManagement />
+                </RoleBasedRoute>
+              } />
             </Routes>
           </main>
           <Footer />

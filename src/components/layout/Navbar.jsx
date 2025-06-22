@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { FaBars, FaTimes, FaUser, FaSignInAlt, FaUserPlus, FaHeartbeat, FaCalendarAlt, FaHistory } from 'react-icons/fa';
+import { FaBars, FaTimes, FaUser, FaSignInAlt, FaUserPlus, FaHeartbeat, FaCalendarAlt, FaHistory, FaClipboardList } from 'react-icons/fa';
 import { isAuthenticated, logout, getUser } from '../../utils/api';
 
 const Navbar = () => {
@@ -47,18 +47,19 @@ const Navbar = () => {
   const getLoggedInNavLinks = () => {
     const links = [...baseNavLinks];
     
-    // Add Events link for all users
-    links.push({ path: '/events', label: 'Sự kiện hiến máu' });
-    
     // Add role-specific links
     if (user?.role === 'Admin' || user?.role === 'Staff') {
       links.push(
-        { path: '/donor-registration', label: 'Đăng ký hiến máu' },
+        { path: '/blood-donation-management', label: 'Quản lý hiến máu' },
+        { path: '/blog-management', label: 'Quản lý blog' },
         { path: '/emergency', label: 'Cấp cứu' }
       );
     } else {
-      // For regular users, add appointment history
-      links.push({ path: '/appointment-history', label: 'Lịch hiến máu' });
+      // For regular users, add events and appointment history
+      links.push(
+        { path: '/events', label: 'Sự kiện hiến máu' },
+        { path: '/appointment-history', label: 'Lịch hiến máu' }
+      );
     }
     
     return links;
@@ -158,6 +159,7 @@ const Navbar = () => {
                 onClick={() => setIsOpen(false)}
               >
                 {link.path === '/events' && <FaCalendarAlt className="text-sm" />}
+                {link.path === '/blood-donation-management' && <FaClipboardList className="text-sm" />}
                 {link.path === '/appointment-history' && <FaHistory className="text-sm" />}
                 <span>{link.label}</span>
               </Link>

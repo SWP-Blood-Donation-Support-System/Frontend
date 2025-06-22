@@ -1,19 +1,41 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaPhone, FaGoogle, FaFacebook, FaHeartbeat } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaPhone, FaGoogle, FaFacebook, FaHeartbeat, FaCalendar, FaMapMarkerAlt, FaTint } from 'react-icons/fa';
+import { registerUser } from '../utils/api';
+import Toast from '../components/Toast';
 
 const Register = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    phone: '',
+    username: '',
     password: '',
-    confirmPassword: '',
+    email: '',
+    fullName: '',
+    dateOfBirth: '',
+    gender: '',
+    phone: '',
+    address: '',
+    bloodTypeId: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  // Blood type options
+  const bloodTypes = [
+    { id: '', name: 'Chọn nhóm máu (tùy chọn)' },
+    { id: 'A+', name: 'A+' },
+    { id: 'A-', name: 'A-' },
+    { id: 'B+', name: 'B+' },
+    { id: 'B-', name: 'B-' },
+    { id: 'AB+', name: 'AB+' },
+    { id: 'AB-', name: 'AB-' },
+    { id: 'O+', name: 'O+' },
+    { id: 'O-', name: 'O-' }
+  ];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,24 +49,47 @@ const Register = () => {
     e.preventDefault();
     setError('');
 
-    if (formData.password !== formData.confirmPassword) {
+    // Validation
+    if (formData.password !== confirmPassword) {
       setError('Mật khẩu xác nhận không khớp');
       return;
     }
 
+    if (formData.password.length < 6) {
+      setError('Mật khẩu phải có ít nhất 6 ký tự');
+      return;
+    }
+
+    setIsLoading(true);
+
     try {
-      // TODO: Implement actual registration logic here
-      console.log('Registration attempt with:', formData);
-      // Simulate successful registration
-      navigate('/login');
+      const data = await registerUser(formData);
+      
+      console.log('Registration successful:', data);
+      setShowSuccess(true);
+      
+      // Chuyển hướng sau khi hiển thị thông báo thành công
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
     } catch (err) {
-      setError('Có lỗi xảy ra khi đăng ký. Vui lòng thử lại.');
+      setError(err.message || 'Có lỗi xảy ra khi đăng ký. Vui lòng thử lại.');
       console.error('Registration error:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      {showSuccess && (
+        <Toast
+          message="Đăng ký thành công! Đang chuyển hướng đến trang đăng nhập..."
+          type="success"
+          onClose={() => setShowSuccess(false)}
+        />
+      )}
+      
       <div className="sm:mx-auto sm:w-full sm:max-w-md animate-fade-in">
         <div className="flex justify-center">
           <div className="w-20 h-20 bg-gradient-to-r from-red-600 to-red-400 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform duration-300">
@@ -81,8 +126,29 @@ const Register = () => {
             )}
 
             <div>
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+                Username <span className="text-red-500">*</span>
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaUser className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  required
+                  value={formData.username}
+                  onChange={handleChange}
+                  className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-3 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                  placeholder="Nhập username"
+                />
+              </div>
+            </div>
+
+            <div>
               <label htmlFor="fullName" className="block text-sm font-medium text-gray-700">
-                Họ và tên
+                Họ và tên <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -103,7 +169,7 @@ const Register = () => {
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
+                Email <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -122,9 +188,52 @@ const Register = () => {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="dateOfBirth" className="block text-sm font-medium text-gray-700">
+                  Ngày sinh <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-1 relative rounded-md shadow-sm">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FaCalendar className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="dateOfBirth"
+                    name="dateOfBirth"
+                    type="date"
+                    required
+                    value={formData.dateOfBirth}
+                    onChange={handleChange}
+                    className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-3 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
+                  Giới tính <span className="text-red-500">*</span>
+                </label>
+                <div className="mt-1 relative rounded-md shadow-sm">
+                  <select
+                    id="gender"
+                    name="gender"
+                    required
+                    value={formData.gender}
+                    onChange={handleChange}
+                    className="focus:ring-red-500 focus:border-red-500 block w-full py-3 px-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                  >
+                    <option value="">Chọn giới tính</option>
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                    <option value="Khác">Khác</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                Số điện thoại
+                Số điện thoại <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -144,8 +253,53 @@ const Register = () => {
             </div>
 
             <div>
+              <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                Địa chỉ <span className="text-red-500">*</span>
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaMapMarkerAlt className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="address"
+                  name="address"
+                  type="text"
+                  required
+                  value={formData.address}
+                  onChange={handleChange}
+                  className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-3 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                  placeholder="123 Đường ABC, Quận XYZ, TP.HCM"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="bloodTypeId" className="block text-sm font-medium text-gray-700">
+                Nhóm máu
+              </label>
+              <div className="mt-1 relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaTint className="h-5 w-5 text-gray-400" />
+                </div>
+                <select
+                  id="bloodTypeId"
+                  name="bloodTypeId"
+                  value={formData.bloodTypeId}
+                  onChange={handleChange}
+                  className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-3 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                >
+                  {bloodTypes.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Mật khẩu
+                Mật khẩu <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -175,7 +329,7 @@ const Register = () => {
 
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Xác nhận mật khẩu
+                Xác nhận mật khẩu <span className="text-red-500">*</span>
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -186,8 +340,8 @@ const Register = () => {
                   name="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'}
                   required
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-10 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
                   placeholder="••••••••"
                 />
@@ -206,9 +360,20 @@ const Register = () => {
             <div>
               <button
                 type="submit"
-                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-red-600 to-red-400 hover:from-red-700 hover:to-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 transform hover:scale-105"
+                disabled={isLoading}
+                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-gradient-to-r from-red-600 to-red-400 hover:from-red-700 hover:to-red-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                Đăng ký
+                {isLoading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Đang đăng ký...
+                  </>
+                ) : (
+                  'Đăng ký tài khoản'
+                )}
               </button>
             </div>
 
