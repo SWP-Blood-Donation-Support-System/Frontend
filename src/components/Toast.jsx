@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FaCheckCircle, FaExclamationCircle, FaTimes } from 'react-icons/fa';
 
-const Toast = ({ message, type = 'success', duration = 3000, onClose }) => {
+const Toast = ({ message, type = 'success', duration = 3000, onClose, action }) => {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
@@ -48,6 +48,17 @@ const Toast = ({ message, type = 'success', duration = 3000, onClose }) => {
     }
   };
 
+  const getActionButtonColor = () => {
+    switch (type) {
+      case 'success':
+        return 'bg-green-600 hover:bg-green-700 text-white';
+      case 'error':
+        return 'bg-red-600 hover:bg-red-700 text-white';
+      default:
+        return 'bg-blue-600 hover:bg-blue-700 text-white';
+    }
+  };
+
   return (
     <div
       className={`fixed top-4 right-4 z-50 transform transition-all duration-300 ${
@@ -63,6 +74,22 @@ const Toast = ({ message, type = 'success', duration = 3000, onClose }) => {
             <p className={`text-sm font-medium ${getTextColor()}`}>
               {message}
             </p>
+            {action && (
+              <div className="mt-2">
+                <button
+                  onClick={() => {
+                    action.onClick();
+                    setIsVisible(false);
+                    setTimeout(() => {
+                      onClose && onClose();
+                    }, 300);
+                  }}
+                  className={`px-3 py-1 text-xs font-medium rounded-md transition-colors duration-200 ${getActionButtonColor()}`}
+                >
+                  {action.label}
+                </button>
+              </div>
+            )}
           </div>
           <div className="ml-4 flex-shrink-0">
             <button

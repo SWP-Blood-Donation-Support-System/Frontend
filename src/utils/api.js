@@ -762,4 +762,168 @@ export const getAllReports = async () => {
     console.error('Error fetching reports:', error);
     throw error;
   }
+};
+
+// Submit survey answers
+export const submitSurveyAnswers = async (appointmentId, surveyAnswers) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để gửi khảo sát');
+    }
+
+    // Format dữ liệu theo yêu cầu của server
+    const formattedAnswers = {
+      appointmentId: appointmentId,
+      answers: Object.keys(surveyAnswers).map(questionId => {
+        const answer = surveyAnswers[questionId];
+        if (answer.optionId) {
+          // Single choice
+          return {
+            questionId: parseInt(questionId),
+            optionId: answer.optionId,
+            additionalText: answer[`text_${answer.optionId}`] || null
+          };
+        } else if (answer.options) {
+          // Multiple choice - tạo nhiều answer cho mỗi option được chọn
+          return answer.options.map(optionId => ({
+            questionId: parseInt(questionId),
+            optionId: optionId,
+            additionalText: answer[`text_${optionId}`] || null
+          }));
+        }
+        return null;
+      }).filter(Boolean).flat() // Flatten array để xử lý multiple choice
+    };
+
+    console.log('Submitting survey answers:', formattedAnswers);
+
+    const response = await fetch(`${API_BASE_URL}/Survey/submit-survey-answers`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(formattedAnswers)
+    });
+
+    console.log('Submit survey response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Submit survey error response:', errorData);
+      
+      // Handle specific error cases
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu khảo sát không hợp lệ');
+      } else if (response.status === 404) {
+        throw new Error('API khảo sát không tồn tại');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi gửi khảo sát: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Submit survey successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error submitting survey:', error);
+    throw error;
+  }
+};
+
+// Get survey answers for a specific appointment
+export const getSurveyAnswers = async (appointmentId) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để xem câu trả lời khảo sát');
+    }
+
+    console.log('Getting survey answers for appointment:', appointmentId);
+
+    const response = await fetch(`${API_BASE_URL}/Survey/answered/${appointmentId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    console.log('Get survey answers response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Get survey answers error response:', errorData);
+      
+      // Handle specific error cases
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu yêu cầu không hợp lệ');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy câu trả lời khảo sát cho cuộc hẹn này');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi lấy câu trả lời khảo sát: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Get survey answers successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error getting survey answers:', error);
+    throw error;
+  }
+};
+
+// Update appointment status after survey review
+export const updateAppointmentStatus = async (appointmentId, status) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để cập nhật trạng thái cuộc hẹn');
+    }
+
+    console.log('Updating appointment status:', { appointmentId, status });
+
+    const response = await fetch(`${API_BASE_URL}/Survey/update-appointment-status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        appointmentId: appointmentId,
+        status: status
+      })
+    });
+
+    console.log('Update appointment status response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Update appointment status error response:', errorData);
+      
+      // Handle specific error cases
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu yêu cầu không hợp lệ');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy cuộc hẹn');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi cập nhật trạng thái: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Update appointment status successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error updating appointment status:', error);
+    throw error;
+  }
 }; 

@@ -1,7 +1,8 @@
 ﻿import { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaCheckCircle, FaUserCheck, FaTint, FaClipboardList, FaArrowLeft, FaSpinner } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaCheckCircle, FaUserCheck, FaTint, FaClipboardList, FaArrowLeft, FaSpinner, FaEye } from 'react-icons/fa';
 import { getEvents, getRegisteredParticipantsByEventId, checkinParticipant, recordDonation } from '../utils/api';
 import Toast from '../components/Toast';
+import SurveyAnswersModal from '../components/SurveyAnswersModal';
 
 const BloodDonationManagement = () => {
   const [events, setEvents] = useState([]);
@@ -17,6 +18,8 @@ const BloodDonationManagement = () => {
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState(null);
   const [donationForm, setDonationForm] = useState({ bloodType: '', donationVolume: '' });
+  const [showSurveyAnswers, setShowSurveyAnswers] = useState(false);
+  const [selectedAppointmentForSurvey, setSelectedAppointmentForSurvey] = useState(null);
 
   useEffect(() => {
     fetchEvents();
@@ -123,6 +126,16 @@ const BloodDonationManagement = () => {
         return newSet;
       });
     }
+  };
+
+  const openSurveyAnswers = (appointmentId) => {
+    setSelectedAppointmentForSurvey(appointmentId);
+    setShowSurveyAnswers(true);
+  };
+
+  const closeSurveyAnswers = () => {
+    setShowSurveyAnswers(false);
+    setSelectedAppointmentForSurvey(null);
   };
 
   const formatDate = (dateString) => {
@@ -377,20 +390,31 @@ const BloodDonationManagement = () => {
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex space-x-2">
                              
-                              
-                              {/* Luôn hiển thị nút check-in để test */}
+                              {/* Nút xem câu trả lời khảo sát */}
                               <button
-                                onClick={() => handleCheckin(participant.appointmentId, participant.fullName || participant.username)}
-                                disabled={checkingIn.has(participant.appointmentId)}
-                                className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={() => openSurveyAnswers(participant.appointmentId)}
+                                className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                title="Xem câu trả lời khảo sát"
                               >
-                                {checkingIn.has(participant.appointmentId) ? (
-                                  <FaSpinner className="animate-spin mr-1" />
-                                ) : (
-                                  <FaUserCheck className="mr-1" />
-                                )}
-                                Check-in
+                                <FaEye className="mr-1" />
+                                Khảo sát
                               </button>
+                              
+                              {/* Nút check-in - chỉ hiển thị khi không đang xét duyệt */}
+                              {participant.appointmentStatus?.toLowerCase() !== 'đang xét duyệt' && (
+                                <button
+                                  onClick={() => handleCheckin(participant.appointmentId, participant.fullName || participant.username)}
+                                  disabled={checkingIn.has(participant.appointmentId)}
+                                  className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {checkingIn.has(participant.appointmentId) ? (
+                                    <FaSpinner className="animate-spin mr-1" />
+                                  ) : (
+                                    <FaUserCheck className="mr-1" />
+                                  )}
+                                  Check-in
+                                </button>
+                              )}
                               
                               {/* Nút ghi nhận hiến máu cho người đã check-in */}
                               {participant.appointmentStatus === 'CheckedIn' && (
@@ -525,6 +549,14 @@ const BloodDonationManagement = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Survey Answers Modal */}
+      {showSurveyAnswers && selectedAppointmentForSurvey && (
+        <SurveyAnswersModal
+          appointmentId={selectedAppointmentForSurvey}
+          onClose={closeSurveyAnswers}
+        />
       )}
     </div>
   );

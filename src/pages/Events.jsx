@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaRegCalendarCheck, FaCheckCircle } from 'react-icons/fa';
-import { getEvents, registerForEvent, getAppointmentHistory, getUserRegisteredEvents, getUser } from '../utils/api';
+import { getEvents, registerForEvent, getAppointmentHistory, getUserRegisteredEvents, getUser, submitSurveyAnswers } from '../utils/api';
 import Toast from '../components/Toast';
+import SurveyModal from '../components/SurveyModal';
 
 const Events = () => {
   const [events, setEvents] = useState([]);
@@ -11,6 +12,10 @@ const Events = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [registeringEvents, setRegisteringEvents] = useState(new Set());
+  const [surveyQuestions, setSurveyQuestions] = useState(null);
+  const [showSurvey, setShowSurvey] = useState(false);
+  const [pendingRegister, setPendingRegister] = useState(null); // {eventId, eventTitle}
+  const [surveyError, setSurveyError] = useState('');
 
   useEffect(() => {
     fetchEventsAndRegistrations();
@@ -56,27 +61,126 @@ const Events = () => {
   };
 
   const handleRegisterEvent = async (eventId, eventTitle) => {
+    // Lấy survey và mở modal
     try {
-      // Add event to registering set to show loading state
       setRegisteringEvents(prev => new Set(prev).add(eventId));
-      
-      await registerForEvent(eventId);
-      setSuccessMessage(`Đã đăng ký thành công cho sự kiện "${eventTitle}"!`);
-      setShowSuccess(true);
-      
-      // Add to registered events set
-      setRegisteredEventIds(prev => new Set(prev).add(eventId));
-      
-    } catch (err) {
-      setError(err.message || 'Không thể đăng ký sự kiện. Vui lòng thử lại.');
-      console.error('Error registering for event:', err);
-    } finally {
-      // Remove event from registering set
+      const res = await fetch('https://blooddonationsystem-gzgdhdhzh5c0gmff.southeastasia-01.azurewebsites.net/api/Survey/questions');
+      const questions = await res.json();
+      setSurveyQuestions(questions);
+      setShowSurvey(true);
+      setPendingRegister({ eventId, eventTitle });
+    } catch {
+      setError('Không thể tải khảo sát. Vui lòng thử lại.');
       setRegisteringEvents(prev => {
         const newSet = new Set(prev);
         newSet.delete(eventId);
         return newSet;
       });
+    }
+  };
+
+  const handleSurveySubmit = async (answers) => {
+    try {
+      let eligible = true;
+      let errorMessage = '';
+      let needsStaffReview = false;
+
+      // Bắt buộc trả lời tất cả các câu hỏi
+      for (const q of surveyQuestions) {
+        const ans = answers[q.questionId];
+        if (!ans || (q.questionType === 'single' && !ans.optionId) || (q.questionType === 'multiple' && (!ans.options || ans.options.length === 0))) {
+          eligible = false;
+          errorMessage = 'Bạn phải trả lời tất cả các câu hỏi trước khi nộp khảo sát.';
+          break;
+        }
+        // Câu hỏi số 1: chỉ kiểm tra có trả lời, không kiểm tra nội dung
+        if (q.questionId === 1) continue;
+        
+        if (q.questionType === 'single') {
+          const opt = q.options.find(o => o.optionId === ans?.optionId);
+          if (opt?.requireText && !ans[`text_${opt.optionId}`]) {
+            eligible = false;
+            errorMessage = 'Vui lòng nhập chi tiết cho các câu trả lời yêu cầu.';
+          }
+          if (opt?.requireText && ans[`text_${opt.optionId}`]) {
+            needsStaffReview = true;
+          }
+          // Chỉ kiểm tra điều kiện hợp lệ nếu không cần staff review
+          if (!needsStaffReview && opt && opt.optionText !== 'Không') {
+            eligible = false;
+            errorMessage = 'Bạn chưa đủ điều kiện đăng ký trực tuyến. Vui lòng liên hệ ban tổ chức hoặc chờ xác nhận từ nhân viên.';
+          }
+        }
+        if (q.questionType === 'multiple') {
+          // Kiểm tra có option nào requireText và có nhập text không
+          for (const optionId of ans.options) {
+            const opt = q.options.find(o => o.optionId === optionId);
+            if (opt?.requireText && ans[`text_${optionId}`]) {
+              needsStaffReview = true;
+            }
+          }
+          // Chỉ kiểm tra điều kiện hợp lệ nếu không cần staff review
+          if (!needsStaffReview) {
+            const selectedOptions = ans.options.map(id => {
+              const opt = q.options.find(o => o.optionId === id);
+              return opt.optionText;
+            });
+            if (!selectedOptions.every(text => text === 'Không')) {
+              eligible = false;
+              errorMessage = 'Bạn chưa đủ điều kiện đăng ký trực tuyến. Vui lòng liên hệ ban tổ chức hoặc chờ xác nhận từ nhân viên.';
+            }
+          }
+        }
+      }
+
+      if (!eligible) {
+        setSurveyError(errorMessage);
+        return;
+      }
+      setSurveyError('');
+      setShowSurvey(false);
+
+      if (needsStaffReview) {
+        // Cần staff review, gửi survey và thông báo chờ xử lý
+        try {
+          const appointmentResult = await registerForEvent(pendingRegister.eventId);
+          console.log('Appointment registered for review:', appointmentResult);
+          const appointmentId = appointmentResult.appointmentId || appointmentResult.id;
+          if (appointmentId) {
+            await submitSurveyAnswers(appointmentId, answers);
+          }
+          setSuccessMessage(`Đã gửi khảo sát thành công! Đơn đăng ký của bạn đang chờ xác nhận từ nhân viên.`);
+          setShowSuccess(true);
+          setRegisteredEventIds(prev => new Set(prev).add(pendingRegister.eventId));
+        } catch (err) {
+          setError(err.message || 'Không thể gửi khảo sát. Vui lòng thử lại.');
+        }
+      } else {
+        // Đủ điều kiện, đăng ký appointment ngay
+        try {
+          const appointmentResult = await registerForEvent(pendingRegister.eventId);
+          console.log('Appointment registered:', appointmentResult);
+          const appointmentId = appointmentResult.appointmentId || appointmentResult.id;
+          if (appointmentId) {
+            await submitSurveyAnswers(appointmentId, answers);
+          }
+          setSuccessMessage(`Đã đăng ký thành công cho sự kiện "${pendingRegister.eventTitle}"!`);
+          setShowSuccess(true);
+          setRegisteredEventIds(prev => new Set(prev).add(pendingRegister.eventId));
+        } catch (err) {
+          setError(err.message || 'Không thể đăng ký sự kiện. Vui lòng thử lại.');
+        }
+      }
+    } catch (err) {
+      setSurveyError('Không thể gửi khảo sát. Vui lòng thử lại.');
+      console.error('Error submitting survey:', err);
+    } finally {
+      setRegisteringEvents(prev => {
+        const newSet = new Set(prev);
+        if (pendingRegister?.eventId) newSet.delete(pendingRegister.eventId);
+        return newSet;
+      });
+      setPendingRegister(null);
     }
   };
 
@@ -151,6 +255,23 @@ const Events = () => {
           message={successMessage}
           type="success"
           onClose={() => setShowSuccess(false)}
+        />
+      )}
+      {showSurvey && surveyQuestions && (
+        <SurveyModal
+          questions={surveyQuestions}
+          onSubmit={handleSurveySubmit}
+          onClose={() => {
+            setShowSurvey(false);
+            setRegisteringEvents(prev => {
+              const newSet = new Set(prev);
+              if (pendingRegister?.eventId) newSet.delete(pendingRegister.eventId);
+              return newSet;
+            });
+            setPendingRegister(null);
+            setSurveyError('');
+          }}
+          errorMessage={surveyError}
         />
       )}
 

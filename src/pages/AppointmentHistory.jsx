@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaClock, FaUser, FaHeartbeat, FaHistory, FaEye, FaCheckCircle, FaTimesCircle, FaTrash } from 'react-icons/fa';
-import { getAppointmentHistory, getUser, cancelAppointment } from '../utils/api';
+import { FaCalendarAlt, FaClock, FaUser, FaHeartbeat, FaHistory, FaEye, FaCheckCircle, FaTimesCircle, FaTrash, FaRedo } from 'react-icons/fa';
+import { getAppointmentHistory, getUser, cancelAppointment, registerForEvent, submitSurveyAnswers } from '../utils/api';
 import Toast from '../components/Toast';
+import SurveyModal from '../components/SurveyModal';
+import SurveyAnswersModal from '../components/SurveyAnswersModal';
 
 const AppointmentHistory = () => {
   const [appointments, setAppointments] = useState([]);
@@ -12,6 +14,12 @@ const AppointmentHistory = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [cancellingAppointments, setCancellingAppointments] = useState(new Set());
+  const [reregisteringAppointments, setReregisteringAppointments] = useState(new Set());
+  const [surveyQuestions, setSurveyQuestions] = useState(null);
+  const [showSurvey, setShowSurvey] = useState(false);
+  const [pendingReregister, setPendingReregister] = useState(null);
+  const [showSurveyAnswers, setShowSurveyAnswers] = useState(false);
+  const [selectedAppointmentForSurvey, setSelectedAppointmentForSurvey] = useState(null);
 
   useEffect(() => {
     fetchAppointmentHistory();
@@ -61,6 +69,89 @@ const AppointmentHistory = () => {
         newSet.delete(appointmentId);
         return newSet;
       });
+    }
+  };
+
+  const handleReregisterEvent = async (appointmentId, eventId, eventTitle) => {
+    // Lấy survey và mở modal
+    try {
+      setReregisteringAppointments(prev => new Set(prev).add(appointmentId));
+      const res = await fetch('https://blooddonationsystem-gzgdhdhzh5c0gmff.southeastasia-01.azurewebsites.net/api/Survey/questions');
+      const questions = await res.json();
+      setSurveyQuestions(questions);
+      setShowSurvey(true);
+      setPendingReregister({ appointmentId, eventId, eventTitle });
+    } catch {
+      setError('Không thể tải khảo sát. Vui lòng thử lại.');
+      setReregisteringAppointments(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(appointmentId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleSurveySubmit = async (answers) => {
+    try {
+      // Kiểm tra điều kiện hợp lệ trước
+      let eligible = true;
+      for (const q of surveyQuestions) {
+        const ans = answers[q.questionId];
+        if (q.questionType === 'single') {
+          const opt = q.options.find(o => o.optionId === ans?.optionId);
+          if (opt && opt.optionText !== 'Không') eligible = false;
+          if (opt?.requireText && !ans[`text_${opt.optionId}`]) eligible = false;
+        }
+        if (q.questionType === 'multiple') {
+          // Với multiple choice, chỉ cần không chọn các lựa chọn có nguy cơ
+          if (ans?.options?.length) {
+            const selectedOptions = ans.options.map(id => {
+              const opt = q.options.find(o => o.optionId === id);
+              return opt.optionText;
+            });
+            // Nếu có chọn bất kỳ lựa chọn nào khác "Không" thì không hợp lệ
+            if (!selectedOptions.every(text => text === 'Không')) {
+              eligible = false;
+            }
+          }
+        }
+      }
+      
+      setShowSurvey(false);
+      
+      if (eligible) {
+        // Đủ điều kiện, đăng ký appointment trước
+        try {
+          const appointmentResult = await registerForEvent(pendingReregister.eventId);
+          console.log('Appointment re-registered:', appointmentResult);
+          
+          // Lấy appointmentId từ kết quả đăng ký
+          const appointmentId = appointmentResult.appointmentId || appointmentResult.id;
+          
+          if (appointmentId) {
+            // Gửi survey answers với appointmentId
+            await submitSurveyAnswers(appointmentId, answers);
+          }
+          
+          setSuccessMessage(`Đã đăng ký lại sự kiện "${pendingReregister.eventTitle}" thành công! Bạn có thể xem chi tiết trong trang Sự kiện hiến máu.`);
+          setShowSuccess(true);
+          await fetchAppointmentHistory();
+        } catch (err) {
+          setError(err.message || 'Không thể đăng ký lại sự kiện. Vui lòng thử lại.');
+        }
+      } else {
+        setError('Bạn chưa đủ điều kiện đăng ký lại trực tuyến. Vui lòng liên hệ ban tổ chức hoặc chờ xác nhận từ nhân viên.');
+      }
+    } catch (err) {
+      setError('Không thể gửi khảo sát. Vui lòng thử lại.');
+      console.error('Error submitting survey:', err);
+    } finally {
+      setReregisteringAppointments(prev => {
+        const newSet = new Set(prev);
+        if (pendingReregister?.appointmentId) newSet.delete(pendingReregister.appointmentId);
+        return newSet;
+      });
+      setPendingReregister(null);
     }
   };
 
@@ -126,8 +217,18 @@ const AppointmentHistory = () => {
     return status?.toLowerCase() === 'đã đăng ký' || status?.toLowerCase() === 'pending' || status?.toLowerCase() === 'chờ xử lý';
   };
 
+  const canReregisterEvent = (status, eventDate) => {
+    const isCancelled = status?.toLowerCase() === 'đã hủy' || status?.toLowerCase() === 'hủy';
+    const isEventUpcoming = new Date(eventDate) > new Date();
+    return isCancelled && isEventUpcoming;
+  };
+
   const isCancelling = (appointmentId) => {
     return cancellingAppointments.has(appointmentId);
+  };
+
+  const isReregistering = (appointmentId) => {
+    return reregisteringAppointments.has(appointmentId);
   };
 
   const openAppointmentDetail = (appointment) => {
@@ -138,6 +239,16 @@ const AppointmentHistory = () => {
   const closeModal = () => {
     setShowModal(false);
     setSelectedAppointment(null);
+  };
+
+  const openSurveyAnswers = (appointment) => {
+    setSelectedAppointmentForSurvey(appointment.appointmentId);
+    setShowSurveyAnswers(true);
+  };
+
+  const closeSurveyAnswers = () => {
+    setShowSurveyAnswers(false);
+    setSelectedAppointmentForSurvey(null);
   };
 
   if (loading) {
@@ -158,6 +269,35 @@ const AppointmentHistory = () => {
           message={successMessage}
           type="success"
           onClose={() => setShowSuccess(false)}
+          action={
+            successMessage.includes('đăng ký lại') ? {
+              label: 'Xem sự kiện',
+              onClick: () => window.location.href = '/events'
+            } : null
+          }
+        />
+      )}
+
+      {showSurvey && surveyQuestions && (
+        <SurveyModal
+          questions={surveyQuestions}
+          onSubmit={handleSurveySubmit}
+          onClose={() => {
+            setShowSurvey(false);
+            setReregisteringAppointments(prev => {
+              const newSet = new Set(prev);
+              if (pendingReregister?.appointmentId) newSet.delete(pendingReregister.appointmentId);
+              return newSet;
+            });
+            setPendingReregister(null);
+          }}
+        />
+      )}
+
+      {showSurveyAnswers && selectedAppointmentForSurvey && (
+        <SurveyAnswersModal
+          appointmentId={selectedAppointmentForSurvey}
+          onClose={closeSurveyAnswers}
         />
       )}
 
@@ -244,6 +384,25 @@ const AppointmentHistory = () => {
           </div>
         </div>
 
+        {/* Info about reregistration feature */}
+        {appointments.some(appointment => 
+          canReregisterEvent(appointment.appointmentStatus, appointment.appointmentDateOfAppointment)
+        ) && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="flex items-start">
+              <FaRedo className="text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div>
+                <h4 className="text-sm font-medium text-blue-900 mb-1">
+                  Chức năng đăng ký lại sự kiện
+                </h4>
+                <p className="text-sm text-blue-700">
+                  Nếu bạn đã hủy lịch hẹn và sự kiện vẫn chưa diễn ra, bạn có thể đăng ký lại bằng cách nhấn vào nút <FaRedo className="inline text-blue-600" /> bên cạnh lịch hẹn đã hủy.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Appointments List */}
         {appointments.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
@@ -319,6 +478,14 @@ const AppointmentHistory = () => {
                         <FaEye className="text-sm" />
                       </button>
                       
+                      <button
+                        onClick={() => openSurveyAnswers(appointment)}
+                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md transition-colors duration-200"
+                        title="Xem câu trả lời khảo sát"
+                      >
+                        Khảo sát
+                      </button>
+                      
                       {canCancelAppointment(appointment.appointmentStatus) && (
                         <button
                           onClick={() => handleCancelAppointment(appointment.appointmentId, appointment.appointmentTitle)}
@@ -333,6 +500,24 @@ const AppointmentHistory = () => {
                             </svg>
                           ) : (
                             <FaTrash className="text-sm" />
+                          )}
+                        </button>
+                      )}
+                      
+                      {canReregisterEvent(appointment.appointmentStatus, appointment.appointmentDateOfAppointment) && (
+                        <button
+                          onClick={() => handleReregisterEvent(appointment.appointmentId, appointment.eventId, appointment.appointmentTitle)}
+                          disabled={isReregistering(appointment.appointmentId)}
+                          className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Đăng ký lại sự kiện hiến máu"
+                        >
+                          {isReregistering(appointment.appointmentId) ? (
+                            <svg className="animate-spin h-4 w-4 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          ) : (
+                            <FaRedo className="text-sm" />
                           )}
                         </button>
                       )}
@@ -477,6 +662,51 @@ const AppointmentHistory = () => {
                         <>
                           <FaTrash className="mr-2" />
                           Hủy lịch hẹn
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {/* View Survey Answers button */}
+                <div className="pt-3 border-t border-gray-200">
+                  <button
+                    onClick={() => {
+                      closeModal();
+                      openSurveyAnswers(selectedAppointment);
+                    }}
+                    className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                  >
+                    <svg className="mr-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Xem câu trả lời khảo sát
+                  </button>
+                </div>
+
+                {/* Reregister button */}
+                {canReregisterEvent(selectedAppointment.appointmentStatus, selectedAppointment.appointmentDateOfAppointment) && (
+                  <div className="pt-3 border-t border-gray-200">
+                    <button
+                      onClick={() => {
+                        closeModal();
+                        handleReregisterEvent(selectedAppointment.appointmentId, selectedAppointment.eventId, selectedAppointment.appointmentTitle);
+                      }}
+                      disabled={isReregistering(selectedAppointment.appointmentId)}
+                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isReregistering(selectedAppointment.appointmentId) ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Đang đăng ký lại...
+                        </>
+                      ) : (
+                        <>
+                          <FaRedo className="mr-2" />
+                          Đăng ký lại sự kiện
                         </>
                       )}
                     </button>
