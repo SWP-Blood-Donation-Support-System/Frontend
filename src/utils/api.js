@@ -421,7 +421,7 @@ export const checkinParticipant = async (appointmentId) => {
     console.log('Checking in participant:', appointmentId);
 
     const response = await fetch(`${API_BASE_URL}/BloodDonationProcess/Checkin`, {
-      method: 'POST',
+      method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,

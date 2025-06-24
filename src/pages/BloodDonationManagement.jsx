@@ -138,6 +138,21 @@ const BloodDonationManagement = () => {
     setSelectedAppointmentForSurvey(null);
   };
 
+  const refreshParticipants = async () => {
+    if (selectedEvent) {
+      try {
+        const participantsData = await getRegisteredParticipantsByEventId(selectedEvent.eventId);
+        if (participantsData && Array.isArray(participantsData)) {
+          setParticipants(participantsData);
+        } else {
+          setParticipants([]);
+        }
+      } catch (err) {
+        console.error('Error refreshing participants:', err);
+      }
+    }
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('vi-VN', {
@@ -157,7 +172,11 @@ const BloodDonationManagement = () => {
       'Registered': { color: 'bg-blue-100 text-blue-800', text: 'Đã đăng ký' },
       'CheckedIn': { color: 'bg-yellow-100 text-yellow-800', text: 'Đã check-in' },
       'Donated': { color: 'bg-green-100 text-green-800', text: 'Đã hiến máu' },
-      'Cancelled': { color: 'bg-red-100 text-red-800', text: 'Đã hủy' }
+      'Cancelled': { color: 'bg-red-100 text-red-800', text: 'Đã hủy' },
+      'Đã đủ điều kiện': { color: 'bg-green-100 text-green-800', text: 'Đã đủ điều kiện' },
+      'Không đủ điều kiện': { color: 'bg-red-100 text-red-800', text: 'Không đủ điều kiện' },
+      'Đang xét duyệt': { color: 'bg-yellow-100 text-yellow-800', text: 'Đang xét duyệt' },
+      'Chờ xử lý': { color: 'bg-yellow-100 text-yellow-800', text: 'Chờ xử lý' }
     };
 
     const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-800', text: status };
@@ -400,8 +419,8 @@ const BloodDonationManagement = () => {
                                 Khảo sát
                               </button>
                               
-                              {/* Nút check-in - chỉ hiển thị khi không đang xét duyệt */}
-                              {participant.appointmentStatus?.toLowerCase() !== 'đang xét duyệt' && (
+                              {/* Nút check-in - chỉ hiển thị khi đã đủ điều kiện */}
+                              {participant.appointmentStatus === 'Đã đủ điều kiện' && (
                                 <button
                                   onClick={() => handleCheckin(participant.appointmentId, participant.fullName || participant.username)}
                                   disabled={checkingIn.has(participant.appointmentId)}
@@ -556,6 +575,7 @@ const BloodDonationManagement = () => {
         <SurveyAnswersModal
           appointmentId={selectedAppointmentForSurvey}
           onClose={closeSurveyAnswers}
+          onStatusUpdate={refreshParticipants}
         />
       )}
     </div>

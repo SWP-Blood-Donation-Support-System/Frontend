@@ -20,8 +20,11 @@ const AppointmentHistory = () => {
   const [pendingReregister, setPendingReregister] = useState(null);
   const [showSurveyAnswers, setShowSurveyAnswers] = useState(false);
   const [selectedAppointmentForSurvey, setSelectedAppointmentForSurvey] = useState(null);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
+    const currentUser = getUser();
+    setUser(currentUser);
     fetchAppointmentHistory();
   }, []);
 
@@ -251,6 +254,10 @@ const AppointmentHistory = () => {
     setSelectedAppointmentForSurvey(null);
   };
 
+  const isStaffOrAdmin = () => {
+    return user?.role === 'Admin' || user?.role === 'Staff';
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
@@ -478,13 +485,15 @@ const AppointmentHistory = () => {
                         <FaEye className="text-sm" />
                       </button>
                       
-                      <button
-                        onClick={() => openSurveyAnswers(appointment)}
-                        className="px-3 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md transition-colors duration-200"
-                        title="Xem câu trả lời khảo sát"
-                      >
-                        Khảo sát
-                      </button>
+                      {isStaffOrAdmin() && (
+                        <button
+                          onClick={() => openSurveyAnswers(appointment)}
+                          className="px-3 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md transition-colors duration-200"
+                          title="Xem câu trả lời khảo sát"
+                        >
+                          Khảo sát
+                        </button>
+                      )}
                       
                       {canCancelAppointment(appointment.appointmentStatus) && (
                         <button
@@ -669,20 +678,22 @@ const AppointmentHistory = () => {
                 )}
 
                 {/* View Survey Answers button */}
-                <div className="pt-3 border-t border-gray-200">
-                  <button
-                    onClick={() => {
-                      closeModal();
-                      openSurveyAnswers(selectedAppointment);
-                    }}
-                    className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-                  >
-                    <svg className="mr-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Xem câu trả lời khảo sát
-                  </button>
-                </div>
+                {isStaffOrAdmin() && (
+                  <div className="pt-3 border-t border-gray-200">
+                    <button
+                      onClick={() => {
+                        closeModal();
+                        openSurveyAnswers(selectedAppointment);
+                      }}
+                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+                    >
+                      <svg className="mr-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Xem câu trả lời khảo sát
+                    </button>
+                  </div>
+                )}
 
                 {/* Reregister button */}
                 {canReregisterEvent(selectedAppointment.appointmentStatus, selectedAppointment.appointmentDateOfAppointment) && (

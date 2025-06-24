@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { FaTimes, FaCheckCircle, FaTimesCircle, FaCalendarAlt, FaSpinner, FaEdit } from 'react-icons/fa';
 import { getSurveyAnswers, updateAppointmentStatus } from '../utils/api';
 
-const SurveyAnswersModal = ({ appointmentId, onClose }) => {
+const SurveyAnswersModal = ({ appointmentId, onClose, onStatusUpdate }) => {
   const [surveyData, setSurveyData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,6 +45,11 @@ const SurveyAnswersModal = ({ appointmentId, onClose }) => {
       
       setShowEditModal(false);
       setSuccessMessage('Đã cập nhật trạng thái thành công!');
+      
+      // Notify parent component to refresh the participants list
+      if (onStatusUpdate) {
+        onStatusUpdate();
+      }
     } catch (err) {
       setError(err.message || 'Không thể cập nhật trạng thái');
       console.error('Error updating status:', err);
