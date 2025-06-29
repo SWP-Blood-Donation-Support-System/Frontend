@@ -13,6 +13,7 @@ import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import Events from './pages/Events';
 import BloodDonationManagement from './pages/BloodDonationManagement';
 import AppointmentHistory from './pages/AppointmentHistory';
@@ -60,6 +61,7 @@ function App() {
               } />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/blood-donation-management" element={
                 <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
                   <BloodDonationManagement />

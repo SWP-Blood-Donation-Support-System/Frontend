@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaRegCalendarCheck, FaCheckCircle } from 'react-icons/fa';
-import { getEvents, registerForEvent, getAppointmentHistory, getUserRegisteredEvents, getUser, submitSurveyAnswers } from '../utils/api';
+import { getEvents, getUser, registerAppointmentWithSurvey, getUserRegisteredEvents } from '../utils/api';
 import Toast from '../components/Toast';
 import SurveyModal from '../components/SurveyModal';
 
@@ -18,45 +18,50 @@ const Events = () => {
   const [surveyError, setSurveyError] = useState('');
 
   useEffect(() => {
-    fetchEventsAndRegistrations();
+    fetchEvents();
   }, []);
 
-  const fetchEventsAndRegistrations = async () => {
+  const fetchEvents = async () => {
     try {
       setLoading(true);
-      
-      // Fetch events
       const eventsData = await getEvents();
       setEvents(eventsData);
       
-      // Fetch user's appointment history to check registered events
-      try {
-        const user = getUser();
-        if (user && user.username) {
-          const appointmentHistory = await getAppointmentHistory(user.username);
-          // Extract event IDs from appointment history
-          const registeredIds = new Set(appointmentHistory.map(appointment => appointment.eventId));
-          setRegisteredEventIds(registeredIds);
-          console.log('Registered event IDs from history:', registeredIds);
-        }
-      } catch (err) {
-        console.warn('Could not fetch appointment history:', err);
-        // If appointment history fails, try the old method
-        try {
-          const registrationsData = await getUserRegisteredEvents();
-          const registeredIds = new Set(registrationsData.map(reg => reg.eventId));
-          setRegisteredEventIds(registeredIds);
-          console.log('Registered event IDs from old API:', registeredIds);
-        } catch (oldErr) {
-          console.warn('Could not fetch user registrations:', oldErr);
-        }
-      }
-      
+      // Fetch user's registered events
+      await fetchUserRegisteredEvents();
     } catch (err) {
       setError('Không thể tải danh sách sự kiện. Vui lòng thử lại.');
       console.error('Error fetching events:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUserRegisteredEvents = async () => {
+    try {
+      const user = getUser();
+      if (user && user.username) {
+        console.log('Fetching registered events for user:', user.username);
+        const registeredEvents = await getUserRegisteredEvents();
+        console.log('Registered events data:', registeredEvents);
+        
+        // Kiểm tra cấu trúc dữ liệu từ AppointmentHistory
+        if (registeredEvents && Array.isArray(registeredEvents)) {
+          const registeredIds = new Set(registeredEvents.map(appointment => {
+            console.log('Appointment item:', appointment);
+            // Lấy eventId từ appointment
+            return appointment.eventId || appointment.event?.eventId;
+          }).filter(id => id)); // Lọc bỏ các giá trị null/undefined
+          console.log('Registered event IDs:', registeredIds);
+          setRegisteredEventIds(registeredIds);
+        } else {
+          console.log('No registered events or invalid data structure');
+          setRegisteredEventIds(new Set());
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching user registered events:', err);
+      // Không hiển thị lỗi cho user vì đây không phải lỗi nghiêm trọng
     }
   };
 
@@ -95,7 +100,6 @@ const Events = () => {
         }
         // Câu hỏi số 1: chỉ kiểm tra có trả lời, không kiểm tra nội dung
         if (q.questionId === 1) continue;
-        
         if (q.questionType === 'single') {
           const opt = q.options.find(o => o.optionId === ans?.optionId);
           if (opt?.requireText && !ans[`text_${opt.optionId}`]) {
@@ -105,21 +109,18 @@ const Events = () => {
           if (opt?.requireText && ans[`text_${opt.optionId}`]) {
             needsStaffReview = true;
           }
-          // Chỉ kiểm tra điều kiện hợp lệ nếu không cần staff review
           if (!needsStaffReview && opt && opt.optionText !== 'Không') {
             eligible = false;
             errorMessage = 'Bạn chưa đủ điều kiện đăng ký trực tuyến. Vui lòng liên hệ ban tổ chức hoặc chờ xác nhận từ nhân viên.';
           }
         }
         if (q.questionType === 'multiple') {
-          // Kiểm tra có option nào requireText và có nhập text không
           for (const optionId of ans.options) {
             const opt = q.options.find(o => o.optionId === optionId);
             if (opt?.requireText && ans[`text_${optionId}`]) {
               needsStaffReview = true;
             }
           }
-          // Chỉ kiểm tra điều kiện hợp lệ nếu không cần staff review
           if (!needsStaffReview) {
             const selectedOptions = ans.options.map(id => {
               const opt = q.options.find(o => o.optionId === id);
@@ -140,36 +141,28 @@ const Events = () => {
       setSurveyError('');
       setShowSurvey(false);
 
-      if (needsStaffReview) {
-        // Cần staff review, gửi survey và thông báo chờ xử lý
-        try {
-          const appointmentResult = await registerForEvent(pendingRegister.eventId);
-          console.log('Appointment registered for review:', appointmentResult);
-          const appointmentId = appointmentResult.appointmentId || appointmentResult.id;
-          if (appointmentId) {
-            await submitSurveyAnswers(appointmentId, answers);
-          }
+      // Lấy user hiện tại
+      const user = getUser();
+      if (!user || !user.username) {
+        setError('Không tìm thấy thông tin người dùng');
+        return;
+      }
+
+      try {
+        // Gọi API mới để tạo lịch hẹn và lưu khảo sát cùng lúc
+        await registerAppointmentWithSurvey(pendingRegister.eventId, answers);
+        if (needsStaffReview) {
           setSuccessMessage(`Đã gửi khảo sát thành công! Đơn đăng ký của bạn đang chờ xác nhận từ nhân viên.`);
-          setShowSuccess(true);
-          setRegisteredEventIds(prev => new Set(prev).add(pendingRegister.eventId));
-        } catch (err) {
-          setError(err.message || 'Không thể gửi khảo sát. Vui lòng thử lại.');
-        }
-      } else {
-        // Đủ điều kiện, đăng ký appointment ngay
-        try {
-          const appointmentResult = await registerForEvent(pendingRegister.eventId);
-          console.log('Appointment registered:', appointmentResult);
-          const appointmentId = appointmentResult.appointmentId || appointmentResult.id;
-          if (appointmentId) {
-            await submitSurveyAnswers(appointmentId, answers);
-          }
+        } else {
           setSuccessMessage(`Đã đăng ký thành công cho sự kiện "${pendingRegister.eventTitle}"!`);
-          setShowSuccess(true);
-          setRegisteredEventIds(prev => new Set(prev).add(pendingRegister.eventId));
-        } catch (err) {
-          setError(err.message || 'Không thể đăng ký sự kiện. Vui lòng thử lại.');
         }
+        setShowSuccess(true);
+        setRegisteredEventIds(prev => new Set(prev).add(pendingRegister.eventId));
+        
+        // Refresh danh sách sự kiện đã đăng ký từ server
+        await fetchUserRegisteredEvents();
+      } catch (err) {
+        setError(err.message || 'Không thể đăng ký sự kiện. Vui lòng thử lại.');
       }
     } catch (err) {
       setSurveyError('Không thể gửi khảo sát. Vui lòng thử lại.');
@@ -183,31 +176,6 @@ const Events = () => {
       setPendingRegister(null);
     }
   };
-
-  // Function to refresh registered events (called when user returns from appointment history)
-  const refreshRegisteredEvents = async () => {
-    try {
-      const user = getUser();
-      if (user && user.username) {
-        const appointmentHistory = await getAppointmentHistory(user.username);
-        const registeredIds = new Set(appointmentHistory.map(appointment => appointment.eventId));
-        setRegisteredEventIds(registeredIds);
-        console.log('Refreshed registered event IDs:', registeredIds);
-      }
-    } catch (err) {
-      console.warn('Could not refresh registered events:', err);
-    }
-  };
-
-  // Listen for focus events to refresh when user returns to the page
-  useEffect(() => {
-    const handleFocus = () => {
-      refreshRegisteredEvents();
-    };
-
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);

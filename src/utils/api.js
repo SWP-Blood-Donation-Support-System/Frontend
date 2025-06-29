@@ -270,7 +270,7 @@ export const getUserRegisteredEvents = async () => {
       throw new Error('Không tìm thấy thông tin người dùng');
     }
 
-    const response = await fetch(`${API_BASE_URL}/Appointment/GetUserAppointments?username=${user.username}`, {
+    const response = await fetch(`${API_BASE_URL}/Appointment/AppointmentHistory/${user.username}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -924,6 +924,354 @@ export const updateAppointmentStatus = async (appointmentId, status) => {
     return data;
   } catch (error) {
     console.error('Error updating appointment status:', error);
+    throw error;
+  }
+};
+
+// Đăng ký lịch hẹn kèm khảo sát (API mới)
+export const registerAppointmentWithSurvey = async (eventId, surveyAnswers) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để đăng ký sự kiện');
+    }
+
+    console.log('Raw survey answers:', surveyAnswers);
+    console.log('Number of questions answered:', Object.keys(surveyAnswers).length);
+
+    // Format dữ liệu gửi lên server
+    const userSurveyAnswerDtos = Object.keys(surveyAnswers).map(questionId => {
+      const answer = surveyAnswers[questionId];
+      if (answer.optionId) {
+        // Single choice
+        return {
+          questionId: parseInt(questionId),
+          optionId: answer.optionId,
+          additionalText: answer[`text_${answer.optionId}`] || null
+        };
+      } else if (answer.options) {
+        // Multiple choice - tạo nhiều answer cho mỗi option được chọn
+        return answer.options.map(optionId => ({
+          questionId: parseInt(questionId),
+          optionId: optionId,
+          additionalText: answer[`text_${optionId}`] || null
+        }));
+      }
+      return null;
+    }).filter(Boolean).flat();
+
+    console.log('userSurveyAnswerDtos:', userSurveyAnswerDtos);
+    console.log('Number of userSurveyAnswerDtos:', userSurveyAnswerDtos.length);
+
+    const requestBody = {
+      eventId,
+      userSurveyAnswerDtos
+    };
+
+    console.log('Request body being sent:', requestBody);
+
+    const response = await fetch(`${API_BASE_URL}/Appointment/RegisterAppointmentV2`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Error response:', errorData);
+      throw new Error(errorData.message || `Lỗi đăng ký: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Success response:', data);
+    return data;
+  } catch (error) {
+    console.error('Error registerAppointmentWithSurvey:', error);
+    throw error;
+  }
+};
+
+// Gửi OTP về email khi đăng ký sự kiện
+export const sendOTP = async (eventId, surveyAnswers) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để đăng ký sự kiện');
+    }
+
+    console.log('Sending OTP for event:', eventId);
+
+    // Format dữ liệu gửi lên server
+    const userSurveyAnswerDtos = Object.keys(surveyAnswers).map(questionId => {
+      const answer = surveyAnswers[questionId];
+      if (answer.optionId) {
+        // Single choice
+        return {
+          questionId: parseInt(questionId),
+          optionId: answer.optionId,
+          additionalText: answer[`text_${answer.optionId}`] || null
+        };
+      } else if (answer.options) {
+        // Multiple choice - tạo nhiều answer cho mỗi option được chọn
+        return answer.options.map(optionId => ({
+          questionId: parseInt(questionId),
+          optionId: optionId,
+          additionalText: answer[`text_${optionId}`] || null
+        }));
+      }
+      return null;
+    }).filter(Boolean).flat();
+
+    const requestBody = {
+      eventId,
+      userSurveyAnswerDtos
+    };
+
+    console.log('Send OTP request body:', requestBody);
+
+    const response = await fetch(`${API_BASE_URL}/Appointment/RegisterAppointmentV2`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    console.log('Send OTP response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Send OTP error response:', errorData);
+      throw new Error(errorData.message || `Lỗi gửi OTP: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Send OTP successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error sending OTP:', error);
+    throw error;
+  }
+};
+
+// Xác nhận OTP
+export const verifyOTP = async (otp) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để xác nhận OTP');
+    }
+
+    console.log('Verifying OTP:', otp);
+
+    const response = await fetch(`${API_BASE_URL}/User/verify-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ otp })
+    });
+
+    console.log('Verify OTP response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Verify OTP error response:', errorData);
+      throw new Error(errorData.message || `Lỗi xác nhận OTP: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Verify OTP successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error verifying OTP:', error);
+    throw error;
+  }
+};
+
+// Gửi OTP khi đăng ký tài khoản
+export const sendRegistrationOTP = async (userData) => {
+  try {
+    console.log('Sending registration OTP for:', userData.email);
+    
+    const response = await fetch(`${API_BASE_URL}/User/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(userData),
+    });
+
+    console.log('Send registration OTP response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Send registration OTP error response:', errorData);
+      
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu đăng ký không hợp lệ');
+      } else if (response.status === 409) {
+        throw new Error('Email đã được sử dụng. Vui lòng chọn email khác.');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi gửi OTP: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Send registration OTP successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error sending registration OTP:', error);
+    
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.');
+    }
+    
+    throw error;
+  }
+};
+
+// Xác thực OTP và tạo tài khoản
+export const verifyRegistrationOTP = async (otp) => {
+  try {
+    console.log('Verifying registration OTP:', otp);
+    
+    const response = await fetch(`${API_BASE_URL}/User/verify-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ otp }),
+    });
+
+    console.log('Verify registration OTP response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Verify registration OTP error response:', errorData);
+      
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'OTP không hợp lệ hoặc đã hết hạn');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy yêu cầu OTP. Vui lòng gửi lại OTP.');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi xác thực OTP: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Verify registration OTP successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error verifying registration OTP:', error);
+    
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.');
+    }
+    
+    throw error;
+  }
+};
+
+// Gửi OTP để đặt lại mật khẩu
+export const requestPasswordReset = async (emailOrUsername) => {
+  try {
+    console.log('Requesting password reset for:', emailOrUsername);
+    
+    const response = await fetch(`${API_BASE_URL}/User/request-password-reset`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ emailOrUsername }),
+    });
+
+    console.log('Request password reset response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Request password reset error response:', errorData);
+      
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu không hợp lệ');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy tài khoản với thông tin này');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi gửi OTP: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Request password reset successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error requesting password reset:', error);
+    
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.');
+    }
+    
+    throw error;
+  }
+};
+
+// Đặt lại mật khẩu với OTP
+export const resetPassword = async (otp, newPassword, confirmPassword) => {
+  try {
+    console.log('Resetting password with OTP');
+    
+    const response = await fetch(`${API_BASE_URL}/User/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        otp,
+        newPassword,
+        confirmPassword
+      }),
+    });
+
+    console.log('Reset password response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Reset password error response:', errorData);
+      
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'OTP không hợp lệ hoặc mật khẩu không đúng định dạng');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy yêu cầu OTP. Vui lòng gửi lại OTP.');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi đặt lại mật khẩu: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Reset password successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.');
+    }
+    
     throw error;
   }
 }; 

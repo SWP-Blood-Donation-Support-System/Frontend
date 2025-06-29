@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaPhone, FaGoogle, FaFacebook, FaHeartbeat, FaCalendar, FaMapMarkerAlt, FaTint } from 'react-icons/fa';
-import { registerUser } from '../utils/api';
+import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaPhone, FaHeartbeat, FaCalendar, FaMapMarkerAlt, FaTint, FaKey } from 'react-icons/fa';
+import { sendRegistrationOTP, verifyRegistrationOTP } from '../utils/api';
 import Toast from '../components/Toast';
 
 const Register = () => {
@@ -23,6 +23,12 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // OTP states
+  const [showOTPModal, setShowOTPModal] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
+  const [otpError, setOtpError] = useState('');
 
   // Blood type options
   const bloodTypes = [
@@ -63,21 +69,77 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      const data = await registerUser(formData);
+      // Gửi OTP thay vì đăng ký trực tiếp
+      await sendRegistrationOTP(formData);
+      
+      console.log('OTP sent successfully');
+      setShowOTPModal(true);
+      setError('');
+    } catch (err) {
+      setError(err.message || 'Có lỗi xảy ra khi gửi OTP. Vui lòng thử lại.');
+      console.error('Send OTP error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOTPChange = (e) => {
+    const value = e.target.value;
+    // Chỉ cho phép nhập số và tối đa 6 ký tự
+    if (/^\d{0,6}$/.test(value)) {
+      setOtp(value);
+      setOtpError('');
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (otp.length !== 6) {
+      setOtpError('Vui lòng nhập đủ 6 số OTP');
+      return;
+    }
+
+    setIsVerifyingOTP(true);
+    setOtpError('');
+
+    try {
+      const data = await verifyRegistrationOTP(otp);
       
       console.log('Registration successful:', data);
       setShowSuccess(true);
+      setShowOTPModal(false);
       
       // Chuyển hướng sau khi hiển thị thông báo thành công
       setTimeout(() => {
         navigate('/login');
       }, 2000);
     } catch (err) {
-      setError(err.message || 'Có lỗi xảy ra khi đăng ký. Vui lòng thử lại.');
-      console.error('Registration error:', err);
+      setOtpError(err.message || 'Có lỗi xảy ra khi xác thực OTP. Vui lòng thử lại.');
+      console.error('Verify OTP error:', err);
+    } finally {
+      setIsVerifyingOTP(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setIsLoading(true);
+    setOtpError('');
+
+    try {
+      await sendRegistrationOTP(formData);
+      setOtp('');
+      console.log('OTP resent successfully');
+    } catch (err) {
+      setOtpError(err.message || 'Có lỗi xảy ra khi gửi lại OTP. Vui lòng thử lại.');
+      console.error('Resend OTP error:', err);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const closeOTPModal = () => {
+    setShowOTPModal(false);
+    setOtp('');
+    setOtpError('');
   };
 
   return (
@@ -369,42 +431,102 @@ const Register = () => {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Đang đăng ký...
+                    Đang gửi OTP...
                   </>
                 ) : (
-                  'Đăng ký tài khoản'
+                  'Gửi OTP đăng ký'
                 )}
               </button>
             </div>
 
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Hoặc đăng ký với</span>
+            {/* OTP Modal */}
+            {showOTPModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 animate-fade-in">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-gradient-to-r from-red-600 to-red-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <FaKey className="text-white text-2xl" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      Xác thực OTP
+                    </h3>
+                    <p className="text-sm text-gray-600 mb-6">
+                      Chúng tôi đã gửi mã OTP 6 số đến email <strong>{formData.email}</strong>
+                    </p>
+                  </div>
+
+                  {otpError && (
+                    <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md mb-4">
+                      <div className="flex">
+                        <div className="flex-shrink-0">
+                          <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <p className="text-sm text-red-700">{otpError}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mb-6">
+                    <label htmlFor="otp" className="block text-sm font-medium text-gray-700 mb-2">
+                      Nhập mã OTP
+                    </label>
+                    <input
+                      id="otp"
+                      type="text"
+                      value={otp}
+                      onChange={handleOTPChange}
+                      className="focus:ring-red-500 focus:border-red-500 block w-full px-3 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200 text-center text-lg tracking-widest"
+                      placeholder="000000"
+                      maxLength={6}
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="flex space-x-3">
+                    <button
+                      type="button"
+                      onClick={handleVerifyOTP}
+                      disabled={isVerifyingOTP || otp.length !== 6}
+                      className="flex-1 bg-gradient-to-r from-red-600 to-red-400 hover:from-red-700 hover:to-red-500 text-white font-medium py-3 px-4 rounded-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isVerifyingOTP ? (
+                        <>
+                          <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Đang xác thực...
+                        </>
+                      ) : (
+                        'Xác thực'
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeOTPModal}
+                      className="px-4 py-3 border border-gray-300 text-gray-700 font-medium rounded-md hover:bg-gray-50 transition-colors duration-200"
+                    >
+                      Hủy
+                    </button>
+                  </div>
+
+                  <div className="mt-4 text-center">
+                    <button
+                      type="button"
+                      onClick={handleResendOTP}
+                      disabled={isLoading}
+                      className="text-sm text-red-600 hover:text-red-500 transition-colors duration-200 disabled:opacity-50"
+                    >
+                      {isLoading ? 'Đang gửi lại...' : 'Gửi lại OTP'}
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors duration-200 hover:scale-105"
-                >
-                  <FaGoogle className="h-5 w-5 text-red-500" />
-                  <span className="ml-2">Google</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors duration-200 hover:scale-105"
-                >
-                  <FaFacebook className="h-5 w-5 text-blue-600" />
-                  <span className="ml-2">Facebook</span>
-                </button>
-              </div>
-            </div>
+            )}
           </form>
         </div>
       </div>
