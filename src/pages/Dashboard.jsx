@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaTint, FaUserPlus, FaExclamationTriangle, FaChartLine, FaCalendarAlt, FaMapMarkerAlt, FaSpinner, FaExclamationCircle, FaFileAlt, FaDownload, FaUsers, FaClock, FaHospital, FaSignOutAlt } from 'react-icons/fa';
 import { getBloodInventory, getAllReports, isAuthenticated, getUser, logout } from '../utils/api';
+import BloodInventoryDetail from './BloodInventoryDetail';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -11,6 +12,12 @@ const Dashboard = () => {
   const [reportsLoading, setReportsLoading] = useState(true);
   const [error, setError] = useState('');
   const [reportsError, setReportsError] = useState('');
+  const [showBloodDetail, setShowBloodDetail] = useState(false);
+  const [selectedBloodType, setSelectedBloodType] = useState(null);
+  const [showAddBloodModal, setShowAddBloodModal] = useState(false);
+  const [addBloodForm, setAddBloodForm] = useState({ bloodType: '', volume: '', bloodDetailDate: '', note: '' });
+  const [addBloodLoading, setAddBloodLoading] = useState(false);
+  const [addBloodError, setAddBloodError] = useState('');
 
   useEffect(() => {
     // Kiểm tra authentication trước khi fetch data
@@ -339,6 +346,59 @@ const Dashboard = () => {
           </div>
         </div>
 
+        {/* Quick Management Section - Admin Only */}
+        {user?.role === 'Admin' && (
+          <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-gray-100">
+            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+              <FaChartLine className="text-orange-600 mr-3" />
+              Quản lý nhanh
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <button
+                onClick={() => navigate('/admin/events')}
+                className="p-6 bg-gradient-to-br from-orange-50 to-red-50 rounded-xl border border-orange-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 text-left group"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <FaCalendarAlt className="text-white text-xl" />
+                  </div>
+                  <FaSpinner className="text-orange-400 text-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Quản lý sự kiện</h3>
+                <p className="text-gray-600 text-sm">Tạo, cập nhật và quản lý các sự kiện hiến máu</p>
+              </button>
+
+              <button
+                onClick={() => navigate('/blog-management')}
+                className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 text-left group"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <FaFileAlt className="text-white text-xl" />
+                  </div>
+                  <FaSpinner className="text-blue-400 text-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Quản lý blog</h3>
+                <p className="text-gray-600 text-sm">Tạo và quản lý bài viết, tin tức</p>
+              </button>
+
+              <button
+                onClick={() => navigate('/blood-donation-management')}
+                className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 text-left group"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <FaTint className="text-white text-xl" />
+                  </div>
+                  <FaSpinner className="text-green-400 text-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Quản lý hiến máu</h3>
+                <p className="text-gray-600 text-sm">Theo dõi và quản lý quá trình hiến máu</p>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Blood Inventory Grid */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-gray-100">
           <div className="flex items-center justify-between mb-6">
@@ -364,35 +424,44 @@ const Dashboard = () => {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {Object.entries(bloodSummary).map(([type, data]) => (
-                <div key={type} className="text-center p-6 bg-gradient-to-br from-gray-50 to-white rounded-xl border border-gray-200 hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-                  <p className="text-3xl font-bold text-blue-600 mb-3">{type}</p>
-                  <div className="space-y-2 mb-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Còn hạn:</span>
-                      <span className="font-semibold text-green-600">{data.available}</span>
-                    </div>
-                    {data.expired > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-gray-600">Hết hạn:</span>
-                        <span className="font-semibold text-red-600">{data.expired}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                    <div 
-                      className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-500"
-                      style={{ 
-                        width: `${data.total > 0 ? (data.available / data.total * 100) : 0}%` 
-                      }}
-                    ></div>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Tổng: {data.total} đơn vị
-                  </p>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <div className="flex justify-end mb-4">
+                <button
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                  onClick={() => setShowAddBloodModal(true)}
+                >
+                  Thêm lượng máu mới
+                </button>
+              </div>
+              <table className="min-w-full bg-white border rounded shadow mb-4 text-sm">
+                <thead className="bg-red-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-semibold">Nhóm máu</th>
+                    <th className="px-4 py-2 text-left font-semibold">Tổng (ml)</th>
+                    <th className="px-4 py-2 text-left font-semibold">Còn hạn (ml)</th>
+                    <th className="px-4 py-2 text-left font-semibold">Hết hạn (ml)</th>
+                    <th className="px-4 py-2 text-left font-semibold">Chi tiết</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(bloodSummary).map(([type, info]) => (
+                    <tr key={type} className="border-t">
+                      <td className="px-4 py-2 font-semibold text-red-700">{type}</td>
+                      <td className="px-4 py-2">{info.total}</td>
+                      <td className="px-4 py-2 text-green-600">{info.available}</td>
+                      <td className="px-4 py-2 text-red-600">{info.expired}</td>
+                      <td className="px-4 py-2">
+                        <button
+                          className="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium"
+                          onClick={() => { setSelectedBloodType(type); setShowBloodDetail(true); }}
+                        >
+                          Xem chi tiết
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -629,6 +698,68 @@ const Dashboard = () => {
             </div>
           )}
         </div>
+
+        {/* Modal chi tiết kho máu */}
+        {showBloodDetail && (
+          <BloodInventoryDetail
+            bloodInventory={bloodInventory.filter(item => item.bloodType === selectedBloodType)}
+            onClose={() => setShowBloodDetail(false)}
+          />
+        )}
+
+        {/* Modal thêm máu mới */}
+        {showAddBloodModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full relative border border-green-100">
+              <button onClick={() => setShowAddBloodModal(false)} className="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-2xl font-bold">×</button>
+              <h2 className="text-xl font-bold mb-4 text-center text-green-700">Thêm lượng máu mới</h2>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setAddBloodLoading(true);
+                setAddBloodError('');
+                try {
+                  const res = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/blood-inventory', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      Authorization: `Bearer ${localStorage.getItem('token')}`,
+                    },
+                    body: JSON.stringify(addBloodForm),
+                  });
+                  if (!res.ok) throw new Error(await res.text());
+                  setShowAddBloodModal(false);
+                  setAddBloodForm({ bloodType: '', volume: '', bloodDetailDate: '', note: '' });
+                  fetchBloodInventory();
+                } catch (err) {
+                  setAddBloodError(err.message);
+                } finally {
+                  setAddBloodLoading(false);
+                }
+              }}>
+                <div className="mb-3">
+                  <label className="block mb-1 font-medium">Nhóm máu</label>
+                  <input required value={addBloodForm.bloodType} onChange={e => setAddBloodForm(f => ({ ...f, bloodType: e.target.value }))} className="w-full border rounded px-3 py-2" placeholder="A+" />
+                </div>
+                <div className="mb-3">
+                  <label className="block mb-1 font-medium">Thể tích (ml)</label>
+                  <input required type="number" min="1" value={addBloodForm.volume} onChange={e => setAddBloodForm(f => ({ ...f, volume: e.target.value }))} className="w-full border rounded px-3 py-2" placeholder="1000" />
+                </div>
+                <div className="mb-3">
+                  <label className="block mb-1 font-medium">Ngày nhập</label>
+                  <input required type="date" value={addBloodForm.bloodDetailDate} onChange={e => setAddBloodForm(f => ({ ...f, bloodDetailDate: e.target.value }))} className="w-full border rounded px-3 py-2" />
+                </div>
+                <div className="mb-3">
+                  <label className="block mb-1 font-medium">Ghi chú</label>
+                  <input value={addBloodForm.note} onChange={e => setAddBloodForm(f => ({ ...f, note: e.target.value }))} className="w-full border rounded px-3 py-2" placeholder="Ghi chú (nếu có)" />
+                </div>
+                {addBloodError && <div className="text-red-600 mb-2 text-sm">{addBloodError}</div>}
+                <button type="submit" disabled={addBloodLoading} className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded font-semibold mt-2">
+                  {addBloodLoading ? 'Đang thêm...' : 'Thêm vào kho máu'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

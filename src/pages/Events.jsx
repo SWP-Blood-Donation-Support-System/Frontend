@@ -69,7 +69,7 @@ const Events = () => {
     // Lấy survey và mở modal
     try {
       setRegisteringEvents(prev => new Set(prev).add(eventId));
-      const res = await fetch('https://blooddonationsystem-gzgdhdhzh5c0gmff.southeastasia-01.azurewebsites.net/api/Survey/questions');
+      const res = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Survey/questions');
       const questions = await res.json();
       setSurveyQuestions(questions);
       setShowSurvey(true);

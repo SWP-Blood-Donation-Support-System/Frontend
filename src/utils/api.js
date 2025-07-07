@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://blooddonationsystem-gzgdhdhzh5c0gmff.southeastasia-01.azurewebsites.net/api';
+const API_BASE_URL = 'https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api';
 
 // Helper function to get auth token
 export const getAuthToken = () => {
@@ -457,14 +457,14 @@ export const checkinParticipant = async (appointmentId) => {
 };
 
 // Record donation (for staff/admin)
-export const recordDonation = async (appointmentId, bloodType, donationVolume) => {
+export const recordDonation = async (appointmentId, bloodType, volume, canDonate = true, staffNote = '') => {
   try {
     const token = getAuthToken();
     if (!token) {
       throw new Error('Bạn cần đăng nhập để ghi nhận hiến máu');
     }
 
-    console.log('Recording donation:', { appointmentId, bloodType, donationVolume });
+    console.log('Recording donation:', { appointmentId, bloodType, volume, canDonate, staffNote });
 
     const response = await fetch(`${API_BASE_URL}/BloodDonationProcess/RecordDonation`, {
       method: 'POST',
@@ -472,10 +472,12 @@ export const recordDonation = async (appointmentId, bloodType, donationVolume) =
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ 
-        appointmentId: appointmentId,
-        bloodType: bloodType,
-        donationVolume: donationVolume
+      body: JSON.stringify({
+        appointmentId,
+        bloodType,
+        volume,
+        canDonate,
+        staffNote
       })
     });
 
@@ -485,13 +487,12 @@ export const recordDonation = async (appointmentId, bloodType, donationVolume) =
       const errorData = await response.json().catch(() => ({}));
       console.error('Record donation error response:', errorData);
       
-      // Handle specific error cases
       if (response.status === 400) {
         throw new Error(errorData.message || 'Dữ liệu ghi nhận hiến máu không hợp lệ');
       } else if (response.status === 404) {
         throw new Error('Không tìm thấy lịch hẹn');
       } else if (response.status === 409) {
-        throw new Error('Hiến máu đã được ghi nhận trước đó');
+        throw new Error('Lịch hẹn đã được ghi nhận hiến máu trước đó');
       } else {
         throw new Error(errorData.message || `Lỗi ghi nhận hiến máu: ${response.status}`);
       }
@@ -970,7 +971,7 @@ export const registerAppointmentWithSurvey = async (eventId, surveyAnswers) => {
 
     console.log('Request body being sent:', requestBody);
 
-    const response = await fetch(`${API_BASE_URL}/Appointment/RegisterAppointmentV2`, {
+    const response = await fetch(`${API_BASE_URL}/Appointment/RegisterAppointmentV3`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1034,7 +1035,7 @@ export const sendOTP = async (eventId, surveyAnswers) => {
 
     console.log('Send OTP request body:', requestBody);
 
-    const response = await fetch(`${API_BASE_URL}/Appointment/RegisterAppointmentV2`, {
+    const response = await fetch(`${API_BASE_URL}/Appointment/RegisterAppointmentV3`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1272,6 +1273,170 @@ export const resetPassword = async (otp, newPassword, confirmPassword) => {
       throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.');
     }
     
+    throw error;
+  }
+};
+
+// Tạo sự kiện mới
+export const createEvent = async (eventData) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để tạo sự kiện');
+    }
+
+    console.log('Creating event:', eventData);
+
+    const response = await fetch(`${API_BASE_URL}/Event/createEvent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(eventData),
+    });
+
+    console.log('Create event response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Create event error response:', errorData);
+      
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu sự kiện không hợp lệ');
+      } else if (response.status === 401) {
+        throw new Error('Bạn không có quyền tạo sự kiện');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi tạo sự kiện: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Create event successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error creating event:', error);
+    throw error;
+  }
+};
+
+// Cập nhật sự kiện
+export const updateEvent = async (eventId, eventData) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để cập nhật sự kiện');
+    }
+
+    console.log('Updating event:', eventId, eventData);
+
+    const response = await fetch(`${API_BASE_URL}/Event/UpdateEvent/${eventId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(eventData),
+    });
+
+    console.log('Update event response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Update event error response:', errorData);
+      
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu sự kiện không hợp lệ');
+      } else if (response.status === 401) {
+        throw new Error('Bạn không có quyền cập nhật sự kiện');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy sự kiện');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi cập nhật sự kiện: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Update event successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error updating event:', error);
+    throw error;
+  }
+};
+
+// Xóa sự kiện
+export const deleteEvent = async (eventId) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để xóa sự kiện');
+    }
+
+    console.log('Deleting event:', eventId);
+
+    const response = await fetch(`${API_BASE_URL}/Event/DeleteEvent/${eventId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    console.log('Delete event response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Delete event error response:', errorData);
+      
+      if (response.status === 401) {
+        throw new Error('Bạn không có quyền xóa sự kiện');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy sự kiện');
+      } else if (response.status === 409) {
+        throw new Error('Không thể xóa sự kiện đã có người đăng ký');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi xóa sự kiện: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Delete event successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    throw error;
+  }
+};
+
+// Update note/reason for not being able to donate
+export const updateNote = async (appointmentId, reasonCode, customNote) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để cập nhật trạng thái');
+    }
+    const response = await fetch(`${API_BASE_URL}/BloodDonationProcess/UpdateNote`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ appointmentId, reasonCode, customNote })
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Lỗi cập nhật trạng thái: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating note:', error);
     throw error;
   }
 }; 

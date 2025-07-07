@@ -79,7 +79,7 @@ const AppointmentHistory = () => {
     // Lấy survey và mở modal
     try {
       setReregisteringAppointments(prev => new Set(prev).add(appointmentId));
-      const res = await fetch('https://blooddonationsystem-gzgdhdhzh5c0gmff.southeastasia-01.azurewebsites.net/api/Survey/questions');
+      const res = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Survey/questions');
       const questions = await res.json();
       setSurveyQuestions(questions);
       setShowSurvey(true);
@@ -143,7 +143,7 @@ const AppointmentHistory = () => {
           setError(err.message || 'Không thể đăng ký lại sự kiện. Vui lòng thử lại.');
         }
       } else {
-        setError('Bạn chưa đủ điều kiện đăng ký lại trực tuyến. Vui lòng liên hệ ban tổ chức hoặc chờ xác nhận từ nhân viên.');
+        setError('Bạn chưa đủ điều kiện đăng ký lại trực tuyến.');
       }
     } catch (err) {
       setError('Không thể gửi khảo sát. Vui lòng thử lại.');
@@ -239,11 +239,6 @@ const AppointmentHistory = () => {
     setShowModal(true);
   };
 
-  const closeModal = () => {
-    setShowModal(false);
-    setSelectedAppointment(null);
-  };
-
   const openSurveyAnswers = (appointment) => {
     setSelectedAppointmentForSurvey(appointment.appointmentId);
     setShowSurveyAnswers(true);
@@ -256,6 +251,37 @@ const AppointmentHistory = () => {
 
   const isStaffOrAdmin = () => {
     return user?.role === 'Admin' || user?.role === 'Staff';
+  };
+
+  const AppointmentDetailModal = ({ appointment, onClose }) => {
+    if (!appointment) return null;
+    const field = (label, value) => (
+      <div><b>{label}</b> {value !== null && value !== undefined && value !== '' ? value : <span className="text-gray-400">Chưa có</span>}</div>
+    );
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+        <div className="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full relative">
+          <button onClick={onClose} className="absolute top-2 right-2 text-gray-500 hover:text-red-600 text-xl">×</button>
+          <h2 className="text-xl font-bold mb-2">{appointment.appointmentTitle}</h2>
+          <div className="grid grid-cols-2 gap-2 mb-2 text-sm">
+            {field('Nội dung:', appointment.appointmentContent)}
+            {field('Ngày đặt lịch:', appointment.appointmentDate?.slice(0,10))}
+            {field('Ngày hẹn:', appointment.appointmentDateOfAppointment)}
+            {field('Giờ hẹn:', appointment.appointmentTime)}
+            {field('Trạng thái:', appointment.appointmentStatus)}
+            {field('Ghi chú nhân viên:', appointment.staffNote)}
+            {field('Trạng thái máu:', appointment.bloodStatus)}
+            {field('Nhóm máu:', appointment.bloodType)}
+            {field('Đơn vị máu:', appointment.donationUnit)}
+            {field('Địa điểm:', appointment.bloodLocation)}
+            {field('Lý do hoãn:', appointment.deferralReasonText)}
+            {field('Lời khuyên:', appointment.deferralAdvice)}
+            {field('Ghi chú của bạn:', appointment.deferralUserNote)}
+            {field('Có thể hiến lại từ:', appointment.canDonateAgainDate)}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -540,202 +566,8 @@ const AppointmentHistory = () => {
       </div>
 
       {/* Appointment Detail Modal */}
-      {showModal && selectedAppointment && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4">
-          <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              {/* Modal Header */}
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Chi tiết lịch hẹn
-                </h3>
-                <button
-                  onClick={closeModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {/* Event Information */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                    <FaCalendarAlt className="text-red-500 mr-2" />
-                    Thông tin sự kiện
-                  </h4>
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <h5 className="text-base font-medium text-gray-900 mb-2">
-                      {selectedAppointment.appointmentTitle || 'Không có tiêu đề'}
-                    </h5>
-                    {selectedAppointment.appointmentContent && (
-                      <p className="text-sm text-gray-600 mb-3">{selectedAppointment.appointmentContent}</p>
-                    )}
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center text-sm">
-                        <FaCalendarAlt className="text-red-500 mr-2 w-4" />
-                        <span className="font-medium w-20">Đăng ký:</span>
-                        <span className="text-gray-600">{formatDate(selectedAppointment.appointmentDate)}</span>
-                      </div>
-                      
-                      <div className="flex items-center text-sm">
-                        <FaCalendarAlt className="text-red-500 mr-2 w-4" />
-                        <span className="font-medium w-20">Sự kiện:</span>
-                        <span className="text-gray-600">{formatDate(selectedAppointment.appointmentDateOfAppointment)}</span>
-                      </div>
-                      
-                      {selectedAppointment.appointmentTime && (
-                        <div className="flex items-center text-sm">
-                          <FaClock className="text-red-500 mr-2 w-4" />
-                          <span className="font-medium w-20">Giờ:</span>
-                          <span className="text-gray-600">{formatTime(selectedAppointment.appointmentTime)}</span>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center text-sm">
-                        <FaUser className="text-red-500 mr-2 w-4" />
-                        <span className="font-medium w-20">ID:</span>
-                        <span className="text-gray-600">{selectedAppointment.appointmentId}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status */}
-                <div>
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2">Trạng thái</h4>
-                  <div className="flex items-center">
-                    {getStatusBadge(selectedAppointment.appointmentStatus)}
-                  </div>
-                </div>
-
-                {/* Blood Information */}
-                {selectedAppointment.bloodStatus && (
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                      <FaHeartbeat className="text-red-500 mr-2" />
-                      Thông tin hiến máu
-                    </h4>
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="space-y-2">
-                        <div className="flex items-center text-sm">
-                          <span className="font-medium w-20">Trạng thái:</span>
-                          <span className="text-gray-600">{selectedAppointment.bloodStatus}</span>
-                        </div>
-                        {selectedAppointment.bloodType && (
-                          <div className="flex items-center text-sm">
-                            <span className="font-medium w-20">Nhóm máu:</span>
-                            <span className="text-gray-600">{selectedAppointment.bloodType}</span>
-                          </div>
-                        )}
-                        {selectedAppointment.donationUnit && (
-                          <div className="flex items-center text-sm">
-                            <span className="font-medium w-20">Đơn vị:</span>
-                            <span className="text-gray-600">{selectedAppointment.donationUnit}</span>
-                          </div>
-                        )}
-                        {selectedAppointment.bloodLocation && (
-                          <div className="flex items-center text-sm">
-                            <span className="font-medium w-20">Địa điểm:</span>
-                            <span className="text-gray-600">{selectedAppointment.bloodLocation}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Cancel button */}
-                {canCancelAppointment(selectedAppointment.appointmentStatus) && (
-                  <div className="pt-3 border-t border-gray-200">
-                    <button
-                      onClick={() => {
-                        closeModal();
-                        handleCancelAppointment(selectedAppointment.appointmentId, selectedAppointment.appointmentTitle);
-                      }}
-                      disabled={isCancelling(selectedAppointment.appointmentId)}
-                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isCancelling(selectedAppointment.appointmentId) ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Đang hủy...
-                        </>
-                      ) : (
-                        <>
-                          <FaTrash className="mr-2" />
-                          Hủy lịch hẹn
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-
-                {/* View Survey Answers button */}
-                {isStaffOrAdmin() && (
-                  <div className="pt-3 border-t border-gray-200">
-                    <button
-                      onClick={() => {
-                        closeModal();
-                        openSurveyAnswers(selectedAppointment);
-                      }}
-                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
-                    >
-                      <svg className="mr-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Xem câu trả lời khảo sát
-                    </button>
-                  </div>
-                )}
-
-                {/* Reregister button */}
-                {canReregisterEvent(selectedAppointment.appointmentStatus, selectedAppointment.appointmentDateOfAppointment) && (
-                  <div className="pt-3 border-t border-gray-200">
-                    <button
-                      onClick={() => {
-                        closeModal();
-                        handleReregisterEvent(selectedAppointment.appointmentId, selectedAppointment.eventId, selectedAppointment.appointmentTitle);
-                      }}
-                      disabled={isReregistering(selectedAppointment.appointmentId)}
-                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isReregistering(selectedAppointment.appointmentId) ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Đang đăng ký lại...
-                        </>
-                      ) : (
-                        <>
-                          <FaRedo className="mr-2" />
-                          Đăng ký lại sự kiện
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={closeModal}
-                  className="px-3 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-200 text-sm"
-                >
-                  Đóng
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {showModal && (
+        <AppointmentDetailModal appointment={selectedAppointment} onClose={() => setShowModal(false)} />
       )}
     </div>
   );

@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaCheckCircle, FaUserCheck, FaTint, FaClipboardList, FaArrowLeft, FaSpinner, FaEye } from 'react-icons/fa';
-import { getEvents, getRegisteredParticipantsByEventId, checkinParticipant, recordDonation } from '../utils/api';
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaCheckCircle, FaUserCheck, FaTint, FaClipboardList, FaArrowLeft, FaSpinner, FaEye, FaEdit } from 'react-icons/fa';
+import { getEvents, getRegisteredParticipantsByEventId, recordDonation, checkinParticipant, updateNote } from '../utils/api';
 import Toast from '../components/Toast';
 import SurveyAnswersModal from '../components/SurveyAnswersModal';
 
@@ -13,13 +13,23 @@ const BloodDonationManagement = () => {
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
-  const [checkingIn, setCheckingIn] = useState(new Set());
   const [recordingDonation, setRecordingDonation] = useState(new Set());
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState(null);
-  const [donationForm, setDonationForm] = useState({ bloodType: '', donationVolume: '' });
+  const [donationForm, setDonationForm] = useState({ 
+    bloodType: '', 
+    volume: '', 
+    canDonate: true, 
+    staffNote: '' 
+  });
   const [showSurveyAnswers, setShowSurveyAnswers] = useState(false);
   const [selectedAppointmentForSurvey, setSelectedAppointmentForSurvey] = useState(null);
+  const [checkingIn, setCheckingIn] = useState(new Set());
+  const [showUpdateStatusModal, setShowUpdateStatusModal] = useState(false);
+  const [updateStatusParticipant, setUpdateStatusParticipant] = useState(null);
+  const [reasonCode, setReasonCode] = useState('');
+  const [customNote, setCustomNote] = useState('');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useEffect(() => {
     fetchEvents();
@@ -58,60 +68,35 @@ const BloodDonationManagement = () => {
     }
   };
 
-  const handleCheckin = async (appointmentId, participantName) => {
-    try {
-      setCheckingIn(prev => new Set(prev).add(appointmentId));
-      
-      await checkinParticipant(appointmentId);
-      setSuccessMessage(`Đã check-in thành công cho ${participantName}!`);
-      setShowSuccess(true);
-      
-      // Refresh participants list
-      if (selectedEvent) {
-        const participantsData = await getRegisteredParticipantsByEventId(selectedEvent.eventId);
-        setParticipants(participantsData);
-      }
-    } catch (err) {
-      setError(err.message || 'Không thể thực hiện check-in. Vui lòng thử lại.');
-      console.error('Error checking in:', err);
-    } finally {
-      setCheckingIn(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(appointmentId);
-        return newSet;
-      });
-    }
-  };
-
-  const handleRecordDonation = async (appointmentId, participantName) => {
-    setSelectedParticipant({ appointmentId, participantName });
+  const handleRecordDonation = async (participant) => {
+    setSelectedParticipant(participant);
+    setDonationForm(prev => ({
+      ...prev,
+      bloodType: participant.bloodType ? getBloodTypeName(participant.bloodType) : '',
+    }));
     setShowDonationModal(true);
   };
 
   const submitDonation = async () => {
     try {
-      if (!donationForm.bloodType || !donationForm.donationVolume) {
+      const bloodTypeToUse = selectedParticipant.bloodType ? getBloodTypeName(selectedParticipant.bloodType) : donationForm.bloodType;
+      if (!bloodTypeToUse || !donationForm.volume) {
         setError('Vui lòng nhập đầy đủ thông tin nhóm máu và thể tích hiến máu.');
         return;
       }
-
       setRecordingDonation(prev => new Set(prev).add(selectedParticipant.appointmentId));
-      
       await recordDonation(
         selectedParticipant.appointmentId,
-        donationForm.bloodType,
-        parseFloat(donationForm.donationVolume)
+        bloodTypeToUse,
+        parseFloat(donationForm.volume),
+        donationForm.canDonate,
+        donationForm.staffNote
       );
-      
-      setSuccessMessage(`Đã ghi nhận hiến máu thành công cho ${selectedParticipant.participantName}!`);
+      setSuccessMessage(`Đã ghi nhận hiến máu thành công cho ${selectedParticipant.fullName || selectedParticipant.username}!`);
       setShowSuccess(true);
-      
-      // Reset form and close modal
-      setDonationForm({ bloodType: '', donationVolume: '' });
+      setDonationForm({ bloodType: '', volume: '', canDonate: true, staffNote: '' });
       setShowDonationModal(false);
       setSelectedParticipant(null);
-      
-      // Refresh participants list
       if (selectedEvent) {
         const participantsData = await getRegisteredParticipantsByEventId(selectedEvent.eventId);
         setParticipants(participantsData);
@@ -358,112 +343,119 @@ const BloodDonationManagement = () => {
                   <p className="text-gray-600">Chưa có người nào đăng ký tham gia sự kiện này.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Người tham gia
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Nhóm máu
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Trạng thái
-                        </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Thao tác
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {participants.map((participant) => (
-                        <tr key={participant.appointmentId} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {participant.fullName || participant.username}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {participant.phoneNumber || participant.phone}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <FaTint className="text-red-500 mr-2" />
-                              <span className={`text-sm font-medium px-2 py-1 rounded-full ${
-                                getBloodTypeName(participant.bloodType) === 'A+' || getBloodTypeName(participant.bloodType) === 'A-' ? 'bg-red-100 text-red-800' :
-                                getBloodTypeName(participant.bloodType) === 'B+' || getBloodTypeName(participant.bloodType) === 'B-' ? 'bg-blue-100 text-blue-800' :
-                                getBloodTypeName(participant.bloodType) === 'AB+' || getBloodTypeName(participant.bloodType) === 'AB-' ? 'bg-purple-100 text-purple-800' :
-                                getBloodTypeName(participant.bloodType) === 'O+' || getBloodTypeName(participant.bloodType) === 'O-' ? 'bg-green-100 text-green-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {participant.bloodType ? getBloodTypeName(participant.bloodType) : 'Chưa cập nhật'}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {getStatusBadge(participant.appointmentStatus)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
-                             
-                              {/* Nút xem câu trả lời khảo sát */}
-                              <button
-                                onClick={() => openSurveyAnswers(participant.appointmentId)}
-                                className="inline-flex items-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                                title="Xem câu trả lời khảo sát"
-                              >
-                                <FaEye className="mr-1" />
-                                Khảo sát
-                              </button>
-                              
-                              {/* Nút check-in - chỉ hiển thị khi đã đủ điều kiện */}
-                              {participant.appointmentStatus === 'Đã đủ điều kiện' && (
-                                <button
-                                  onClick={() => handleCheckin(participant.appointmentId, participant.fullName || participant.username)}
-                                  disabled={checkingIn.has(participant.appointmentId)}
-                                  className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {checkingIn.has(participant.appointmentId) ? (
-                                    <FaSpinner className="animate-spin mr-1" />
-                                  ) : (
-                                    <FaUserCheck className="mr-1" />
-                                  )}
-                                  Check-in
-                                </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4">
+                  {participants.map((participant) => (
+                    <div
+                      key={participant.appointmentId}
+                      className="bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between border border-gray-100 hover:shadow-2xl transition-all duration-200"
+                    >
+                      <div className="mb-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-lg font-bold text-gray-900 truncate max-w-[70%]">
+                            {participant.fullName || participant.username}
+                          </span>
+                          <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
+                            getBloodTypeName(participant.bloodType) === 'A+' || getBloodTypeName(participant.bloodType) === 'A-' ? 'bg-red-100 text-red-800' :
+                            getBloodTypeName(participant.bloodType) === 'B+' || getBloodTypeName(participant.bloodType) === 'B-' ? 'bg-blue-100 text-blue-800' :
+                            getBloodTypeName(participant.bloodType) === 'AB+' || getBloodTypeName(participant.bloodType) === 'AB-' ? 'bg-purple-100 text-purple-800' :
+                            getBloodTypeName(participant.bloodType) === 'O+' || getBloodTypeName(participant.bloodType) === 'O-' ? 'bg-green-100 text-green-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {participant.bloodType ? getBloodTypeName(participant.bloodType) : 'Chưa cập nhật'}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-500 mb-2 truncate">
+                          {participant.phoneNumber || participant.phone}
+                        </div>
+                        <div className="mb-2">
+                          {getStatusBadge(participant.appointmentStatus)}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-auto">
+                        {/* Nút khảo sát */}
+                        <button
+                          onClick={() => openSurveyAnswers(participant.appointmentId)}
+                          className="flex-1 min-w-[110px] inline-flex items-center justify-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition"
+                          title="Xem khảo sát"
+                        >
+                          <FaEye className="mr-1" /> Khảo sát
+                        </button>
+                        {/* Nút check-in */}
+                        {participant.appointmentStatus === 'Đã đủ điều kiện' && (
+                          <button
+                            onClick={async () => {
+                              setCheckingIn(prev => new Set(prev).add(participant.appointmentId));
+                              setError('');
+                              try {
+                                await checkinParticipant(participant.appointmentId);
+                                setSuccessMessage('Check-in thành công!');
+                                setShowSuccess(true);
+                                if (selectedEvent) {
+                                  const participantsData = await getRegisteredParticipantsByEventId(selectedEvent.eventId);
+                                  setParticipants(participantsData);
+                                }
+                              } catch (err) {
+                                setError(err.message || 'Không thể check-in. Vui lòng thử lại.');
+                              } finally {
+                                setCheckingIn(prev => {
+                                  const newSet = new Set(prev);
+                                  newSet.delete(participant.appointmentId);
+                                  return newSet;
+                                });
+                              }
+                            }}
+                            disabled={checkingIn.has(participant.appointmentId)}
+                            className="flex-1 min-w-[110px] inline-flex items-center justify-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                            title="Check-in"
+                          >
+                            {checkingIn.has(participant.appointmentId) ? (
+                              <FaSpinner className="animate-spin mr-1" />
+                            ) : (
+                              <FaUserCheck className="mr-1" />
+                            )}
+                            Check-in
+                          </button>
+                        )}
+                        {/* Nút ghi nhận hiến máu và cập nhật trạng thái */}
+                        {participant.appointmentStatus === 'Đã đến' && (
+                          <>
+                            <button
+                              onClick={() => handleRecordDonation(participant)}
+                              disabled={recordingDonation.has(participant.appointmentId)}
+                              className="flex-1 min-w-[110px] inline-flex items-center justify-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                              title="Ghi nhận hiến máu"
+                            >
+                              {recordingDonation.has(participant.appointmentId) ? (
+                                <FaSpinner className="animate-spin mr-1" />
+                              ) : (
+                                <FaTint className="mr-1" />
                               )}
-                              
-                              {/* Nút ghi nhận hiến máu cho người đã check-in */}
-                              {participant.appointmentStatus === 'CheckedIn' && (
-                                <button
-                                  onClick={() => handleRecordDonation(participant.appointmentId, participant.fullName || participant.username)}
-                                  disabled={recordingDonation.has(participant.appointmentId)}
-                                  className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {recordingDonation.has(participant.appointmentId) ? (
-                                    <FaSpinner className="animate-spin mr-1" />
-                                  ) : (
-                                    <FaTint className="mr-1" />
-                                  )}
-                                  Ghi nhận hiến máu
-                                </button>
-                              )}
-                              
-                              {/* Badge hoàn thành cho người đã hiến máu */}
-                              {participant.appointmentStatus === 'Donated' && (
-                                <span className="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-green-800 bg-green-100">
-                                  <FaCheckCircle className="mr-1" />
-                                  Hoàn thành
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                              Ghi nhận
+                            </button>
+                            <button
+                              onClick={() => {
+                                setUpdateStatusParticipant(participant);
+                                setShowUpdateStatusModal(true);
+                                setReasonCode('');
+                                setCustomNote('');
+                              }}
+                              className="flex-1 min-w-[110px] inline-flex items-center justify-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 transition"
+                              title="Cập nhật trạng thái không thể hiến máu"
+                            >
+                              <FaEdit className="mr-1" />
+                              Cập nhật
+                            </button>
+                          </>
+                        )}
+                        {/* Badge hoàn thành */}
+                        {participant.appointmentStatus === 'Donated' && (
+                          <span className="flex-1 min-w-[110px] inline-flex items-center justify-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-green-800 bg-green-100">
+                            <FaCheckCircle className="mr-1" /> Hoàn thành
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -492,49 +484,86 @@ const BloodDonationManagement = () => {
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Ghi nhận hiến máu - {selectedParticipant.participantName}
+                Ghi nhận hiến máu - {selectedParticipant.fullName || selectedParticipant.username}
               </h3>
               
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Nhóm máu
+                    Nhóm máu <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    value={donationForm.bloodType}
-                    onChange={(e) => setDonationForm(prev => ({ ...prev, bloodType: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
-                  >
-                    <option value="">Chọn nhóm máu</option>
-                    <optgroup label="Nhóm A">
-                      <option value="A+">A+</option>
-                      <option value="A-">A-</option>
-                    </optgroup>
-                    <optgroup label="Nhóm B">
-                      <option value="B+">B+</option>
-                      <option value="B-">B-</option>
-                    </optgroup>
-                    <optgroup label="Nhóm AB">
-                      <option value="AB+">AB+</option>
-                      <option value="AB-">AB-</option>
-                    </optgroup>
-                    <optgroup label="Nhóm O">
-                      <option value="O+">O+</option>
-                      <option value="O-">O-</option>
-                    </optgroup>
-                  </select>
+                  {selectedParticipant.bloodType ? (
+                    <input
+                      type="text"
+                      value={getBloodTypeName(selectedParticipant.bloodType)}
+                      disabled
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700"
+                    />
+                  ) : (
+                    <select
+                      value={donationForm.bloodType}
+                      onChange={(e) => setDonationForm(prev => ({ ...prev, bloodType: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                    >
+                      <option value="">Chọn nhóm máu</option>
+                      <optgroup label="Nhóm A">
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                      </optgroup>
+                      <optgroup label="Nhóm B">
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                      </optgroup>
+                      <optgroup label="Nhóm AB">
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                      </optgroup>
+                      <optgroup label="Nhóm O">
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                      </optgroup>
+                    </select>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Thể tích hiến máu (ml)
+                    Thể tích hiến máu (ml) <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
-                    value={donationForm.donationVolume}
-                    onChange={(e) => setDonationForm(prev => ({ ...prev, donationVolume: e.target.value }))}
-                    placeholder="Nhập thể tích máu"
+                    min="0"
+                    step="0.1"
+                    value={donationForm.volume}
+                    onChange={(e) => setDonationForm(prev => ({ ...prev, volume: e.target.value }))}
+                    placeholder="Nhập thể tích máu (ml)"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500"
+                  />
+                </div>
+
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="canDonate"
+                    checked={donationForm.canDonate}
+                    onChange={(e) => setDonationForm(prev => ({ ...prev, canDonate: e.target.checked }))}
+                    className="h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="canDonate" className="ml-2 block text-sm text-gray-900">
+                    Có thể hiến máu
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Ghi chú của nhân viên
+                  </label>
+                  <textarea
+                    value={donationForm.staffNote}
+                    onChange={(e) => setDonationForm(prev => ({ ...prev, staffNote: e.target.value }))}
+                    placeholder="Nhập ghi chú (tùy chọn)"
+                    rows="3"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
                   />
                 </div>
               </div>
@@ -544,7 +573,7 @@ const BloodDonationManagement = () => {
                   onClick={() => {
                     setShowDonationModal(false);
                     setSelectedParticipant(null);
-                    setDonationForm({ bloodType: '', donationVolume: '' });
+                    setDonationForm({ bloodType: '', volume: '', canDonate: true, staffNote: '' });
                   }}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
                 >
@@ -577,6 +606,79 @@ const BloodDonationManagement = () => {
           onClose={closeSurveyAnswers}
           onStatusUpdate={refreshParticipants}
         />
+      )}
+
+      {/* Modal cập nhật trạng thái */}
+      {showUpdateStatusModal && updateStatusParticipant && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 shadow-xl max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">Cập nhật trạng thái không thể hiến máu</h3>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Lý do không thể hiến máu <span className="text-red-500">*</span></label>
+              <select
+                value={reasonCode}
+                onChange={e => setReasonCode(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              >
+                <option value="">Chọn lý do</option>
+                <option value="HIGH_BP">Huyết áp cao trên 140/90</option>
+                <option value="HEART_RATE">Nhịp tim bất thường</option>
+                <option value="LOW_BP">Huyết áp thấp dưới 90/60</option>
+                <option value="LOW_HB">Thiếu Hemoglobin (Hb)</option>
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Ghi chú bổ sung</label>
+              <textarea
+                value={customNote}
+                onChange={e => setCustomNote(e.target.value)}
+                rows="3"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 resize-none"
+                placeholder="Nhập ghi chú (nếu có)"
+              />
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowUpdateStatusModal(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={async () => {
+                  if (!reasonCode) {
+                    setError('Vui lòng chọn lý do không thể hiến máu.');
+                    return;
+                  }
+                  setUpdatingStatus(true);
+                  setError('');
+                  try {
+                    await updateNote(updateStatusParticipant.appointmentId, reasonCode, customNote);
+                    setSuccessMessage('Cập nhật trạng thái thành công!');
+                    setShowSuccess(true);
+                    setShowUpdateStatusModal(false);
+                    setUpdateStatusParticipant(null);
+                    setReasonCode('');
+                    setCustomNote('');
+                    // Refresh participants
+                    if (selectedEvent) {
+                      const participantsData = await getRegisteredParticipantsByEventId(selectedEvent.eventId);
+                      setParticipants(participantsData);
+                    }
+                  } catch (err) {
+                    setError(err.message || 'Không thể cập nhật trạng thái. Vui lòng thử lại.');
+                  } finally {
+                    setUpdatingStatus(false);
+                  }
+                }}
+                disabled={updatingStatus}
+                className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updatingStatus ? 'Đang cập nhật...' : 'Xác nhận'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

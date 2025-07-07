@@ -7,6 +7,7 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
+  const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -45,23 +46,24 @@ const Navbar = () => {
 
   // Navigation links for logged-in users
   const getLoggedInNavLinks = () => {
-    const links = [...baseNavLinks];
-    
-    // Add role-specific links
+    let links = [...baseNavLinks];
     if (user?.role === 'Admin' || user?.role === 'Staff') {
+      // Loại bỏ Trang chủ và Nhóm máu cho admin/staff
+      links = links.filter(l => l.path !== '/' && l.path !== '/blood-types');
       links.push(
         { path: '/blood-donation-management', label: 'Quản lý hiến máu' },
         { path: '/blog-management', label: 'Quản lý blog' },
-        { path: '/emergency', label: 'Cấp cứu' }
+        { path: '/admin/events', label: 'Quản lý sự kiện' },
+        { path: '/admin/emergencies', label: 'Quản lý đơn khẩn cấp' }
       );
     } else {
-      // For regular users, add events and appointment history
+      // For regular users, add events, appointment history, and emergency
       links.push(
         { path: '/events', label: 'Sự kiện hiến máu' },
-        { path: '/appointment-history', label: 'Lịch hiến máu' }
+        { path: '/appointment-history', label: 'Lịch hiến máu' },
+        { path: '/emergency', label: 'Đơn khẩn cấp' }
       );
     }
-    
     return links;
   };
 
@@ -101,19 +103,43 @@ const Navbar = () => {
           <div className="hidden md:flex items-center space-x-3">
             {isLoggedIn ? (
               <>
-                <Link
-                  to={user?.role === 'Admin' || user?.role === 'Staff' ? '/dashboard' : '/profile'}
-                  className="text-gray-700 hover:text-red-600 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-red-50 flex items-center space-x-2"
-                >
-                  <FaUser className="text-sm" />
-                  <span>{user?.fullName || user?.username || 'Tài khoản'}</span>
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg"
-                >
-                  Đăng xuất
-                </button>
+                {(user?.role === 'Admin' || user?.role === 'Staff') ? (
+                  <div className="relative">
+                    <button
+                      className="flex items-center space-x-2 text-gray-700 hover:text-red-600 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-red-50"
+                      onClick={() => setAdminDropdownOpen((open) => !open)}
+                      onBlur={() => setTimeout(() => setAdminDropdownOpen(false), 150)}
+                      tabIndex={0}
+                    >
+                      <FaUser className="text-sm" />
+                      <span>{user?.fullName || user?.username || 'Tài khoản'}</span>
+                      <svg className="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    {adminDropdownOpen && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                        <Link to="/dashboard" className="block px-4 py-2 text-gray-700 hover:bg-red-50" onClick={() => setAdminDropdownOpen(false)}>Dashboard</Link>
+                        <Link to="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-red-50" onClick={() => setAdminDropdownOpen(false)}>Danh sách user</Link>
+                        <button onClick={() => { setAdminDropdownOpen(false); handleLogout(); }} className="w-full text-left px-4 py-2 text-gray-700 hover:bg-red-50">Đăng xuất</button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <Link
+                      to="/profile"
+                      className="text-gray-700 hover:text-red-600 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-red-50 flex items-center space-x-2"
+                    >
+                      <FaUser className="text-sm" />
+                      <span>{user?.fullName || user?.username || 'Tài khoản'}</span>
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 transform hover:scale-105 shadow-md hover:shadow-lg ml-2"
+                    >
+                      Đăng xuất
+                    </button>
+                  </>
+                )}
               </>
             ) : (
               <>
@@ -159,6 +185,7 @@ const Navbar = () => {
                 onClick={() => setIsOpen(false)}
               >
                 {link.path === '/events' && <FaCalendarAlt className="text-sm" />}
+                {link.path === '/admin/events' && <FaCalendarAlt className="text-sm" />}
                 {link.path === '/blood-donation-management' && <FaClipboardList className="text-sm" />}
                 {link.path === '/appointment-history' && <FaHistory className="text-sm" />}
                 <span>{link.label}</span>
@@ -169,20 +196,34 @@ const Navbar = () => {
             <div className="pt-4 pb-3 border-t border-gray-200">
               {isLoggedIn ? (
                 <>
-                  <Link
-                    to={user?.role === 'Admin' || user?.role === 'Staff' ? '/dashboard' : '/profile'}
-                    className="text-gray-700 hover:text-red-600 hover:bg-red-50 block px-3 py-2 rounded-lg text-base font-medium transition-all duration-200 flex items-center space-x-2"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    <FaUser className="text-sm" />
-                    <span>{user?.fullName || user?.username || 'Tài khoản'}</span>
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-base font-medium transition-all duration-200 mt-2"
-                  >
-                    Đăng xuất
-                  </button>
+                  {(user?.role === 'Admin' || user?.role === 'Staff') ? (
+                    <div className="border-b border-gray-200 pb-2 mb-2">
+                      <div className="flex items-center space-x-2 px-3 py-2">
+                        <FaUser className="text-sm" />
+                        <span>{user?.fullName || user?.username || 'Tài khoản'}</span>
+                      </div>
+                      <Link to="/dashboard" className="block px-3 py-2 text-gray-700 hover:bg-red-50">Dashboard</Link>
+                      <Link to="/admin/users" className="block px-3 py-2 text-gray-700 hover:bg-red-50">Danh sách user</Link>
+                      <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-gray-700 hover:bg-red-50">Đăng xuất</button>
+                    </div>
+                  ) : (
+                    <>
+                      <Link
+                        to="/profile"
+                        className="text-gray-700 hover:text-red-600 hover:bg-red-50 block px-3 py-2 rounded-lg text-base font-medium transition-all duration-200 flex items-center space-x-2"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        <FaUser className="text-sm" />
+                        <span>{user?.fullName || user?.username || 'Tài khoản'}</span>
+                      </Link>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg text-base font-medium transition-all duration-200 mt-2"
+                      >
+                        Đăng xuất
+                      </button>
+                    </>
+                  )}
                 </>
               ) : (
                 <>
