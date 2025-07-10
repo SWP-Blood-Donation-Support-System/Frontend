@@ -367,13 +367,26 @@ export const cancelAppointment = async (appointmentId) => {
 
 // Logout function
 export const logout = () => {
-  removeAuthToken();
-  removeUser();
-  
-  // Dispatch custom event to notify components
-  window.dispatchEvent(new Event('authStateChanged'));
-  
-  window.location.href = '/login';
+  try {
+    // Clear all stored data
+    removeAuthToken();
+    removeUser();
+    
+    // Clear any other stored data that might exist
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    sessionStorage.clear();
+    
+    // Dispatch custom event to notify components
+    window.dispatchEvent(new Event('authStateChanged'));
+    
+    // Use window.location.replace for better SPA handling and to prevent back button issues
+    window.location.replace('/login');
+  } catch (error) {
+    console.error('Logout error:', error);
+    // Force redirect even if there's an error
+    window.location.replace('/login');
+  }
 };
 
 // Check if user is authenticated

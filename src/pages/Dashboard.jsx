@@ -236,8 +236,13 @@ const Dashboard = () => {
               </div>
               <button
                 onClick={() => {
-                  logout();
-                  navigate('/login');
+                  try {
+                    logout();
+                  } catch (error) {
+                    console.error('Logout error:', error);
+                    // Force redirect even if there's an error
+                    window.location.replace('/login');
+                  }
                 }}
                 className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200"
               >
