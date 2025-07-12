@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaClock, FaUser, FaHeartbeat, FaHistory, FaEye, FaCheckCircle, FaTimesCircle, FaTrash, FaRedo } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaUser, FaHeartbeat, FaHistory, FaEye, FaCheckCircle, FaTimesCircle, FaTrash, FaRedo, FaCertificate, FaDownload } from 'react-icons/fa';
 import { getAppointmentHistory, getUser, cancelAppointment, registerForEvent, submitSurveyAnswers } from '../utils/api';
 import Toast from '../components/Toast';
 import SurveyModal from '../components/SurveyModal';
@@ -21,6 +21,8 @@ const AppointmentHistory = () => {
   const [showSurveyAnswers, setShowSurveyAnswers] = useState(false);
   const [selectedAppointmentForSurvey, setSelectedAppointmentForSurvey] = useState(null);
   const [user, setUser] = useState(null);
+  const [showCertificate, setShowCertificate] = useState(false);
+  const [certificateData, setCertificateData] = useState(null);
 
   useEffect(() => {
     const currentUser = getUser();
@@ -31,6 +33,7 @@ const AppointmentHistory = () => {
   const fetchAppointmentHistory = async () => {
     try {
       setLoading(true);
+      setError(''); // Clear any previous errors
       const user = getUser();
       
       if (!user || !user.username) {
@@ -42,7 +45,13 @@ const AppointmentHistory = () => {
       setAppointments(data);
       console.log('Appointment history:', data);
     } catch (err) {
-      setError(err.message || 'Không thể tải lịch sử lịch hẹn. Vui lòng thử lại.');
+      // Only show error if it's not about empty appointment history
+      if (err.message && !err.message.toLowerCase().includes('no appointment history found')) {
+        setError(err.message || 'Không thể tải lịch sử lịch hẹn. Vui lòng thử lại.');
+      } else {
+        // If it's about no appointments found, just set empty array without error
+        setAppointments([]);
+      }
       console.error('Error fetching appointment history:', err);
     } finally {
       setLoading(false);
@@ -98,24 +107,68 @@ const AppointmentHistory = () => {
     try {
       // Kiểm tra điều kiện hợp lệ trước
       let eligible = true;
+      let errorMessage = '';
+      
+      // Bắt buộc trả lời tất cả các câu hỏi
       for (const q of surveyQuestions) {
         const ans = answers[q.questionId];
-        if (q.questionType === 'single') {
-          const opt = q.options.find(o => o.optionId === ans?.optionId);
-          if (opt && opt.optionText !== 'Không') eligible = false;
-          if (opt?.requireText && !ans[`text_${opt.optionId}`]) eligible = false;
+        
+        // Kiểm tra câu hỏi có được trả lời chưa
+        if (!ans) {
+          eligible = false;
+          errorMessage = 'Bạn phải trả lời tất cả các câu hỏi trước khi nộp khảo sát.';
+          break;
         }
+        
+        if (q.questionType === 'single') {
+          if (!ans.optionId) {
+            eligible = false;
+            errorMessage = 'Bạn phải trả lời tất cả các câu hỏi trước khi nộp khảo sát.';
+            break;
+          }
+          
+          const opt = q.options.find(o => o.optionId === ans.optionId);
+          if (opt?.requireText && !ans[`text_${opt.optionId}`]) {
+            eligible = false;
+            errorMessage = 'Vui lòng nhập chi tiết cho các câu trả lời yêu cầu.';
+            break;
+          }
+          
+          if (opt && opt.optionText !== 'Không') {
+            eligible = false;
+            errorMessage = 'Bạn chưa đủ điều kiện đăng ký lại trực tuyến.';
+            break;
+          }
+        }
+        
         if (q.questionType === 'multiple') {
-          // Với multiple choice, chỉ cần không chọn các lựa chọn có nguy cơ
-          if (ans?.options?.length) {
-            const selectedOptions = ans.options.map(id => {
-              const opt = q.options.find(o => o.optionId === id);
-              return opt.optionText;
-            });
-            // Nếu có chọn bất kỳ lựa chọn nào khác "Không" thì không hợp lệ
-            if (!selectedOptions.every(text => text === 'Không')) {
+          if (!ans.options || ans.options.length === 0) {
+            eligible = false;
+            errorMessage = 'Bạn phải trả lời tất cả các câu hỏi trước khi nộp khảo sát.';
+            break;
+          }
+          
+          for (const optionId of ans.options) {
+            const opt = q.options.find(o => o.optionId === optionId);
+            if (opt?.requireText && !ans[`text_${optionId}`]) {
               eligible = false;
+              errorMessage = 'Vui lòng nhập chi tiết cho các câu trả lời yêu cầu.';
+              break;
             }
+          }
+          
+          if (!eligible) break; // Nếu đã có lỗi requireText thì dừng
+          
+          // Với multiple choice, chỉ cần không chọn các lựa chọn có nguy cơ
+          const selectedOptions = ans.options.map(id => {
+            const opt = q.options.find(o => o.optionId === id);
+            return opt.optionText;
+          });
+          // Nếu có chọn bất kỳ lựa chọn nào khác "Không" thì không hợp lệ
+          if (!selectedOptions.every(text => text === 'Không')) {
+            eligible = false;
+            errorMessage = 'Bạn chưa đủ điều kiện đăng ký lại trực tuyến.';
+            break;
           }
         }
       }
@@ -123,6 +176,12 @@ const AppointmentHistory = () => {
       setShowSurvey(false);
       
       if (eligible) {
+        // Kiểm tra pendingReregister có tồn tại không
+        if (!pendingReregister || !pendingReregister.eventId) {
+          setError('Thông tin sự kiện không hợp lệ. Vui lòng thử lại.');
+          return;
+        }
+
         // Đủ điều kiện, đăng ký appointment trước
         try {
           const appointmentResult = await registerForEvent(pendingReregister.eventId);
@@ -140,10 +199,17 @@ const AppointmentHistory = () => {
           setShowSuccess(true);
           await fetchAppointmentHistory();
         } catch (err) {
-          setError(err.message || 'Không thể đăng ký lại sự kiện. Vui lòng thử lại.');
+          // Kiểm tra nếu đây là thông báo về lịch hẹn đã được duyệt
+          if (err.message && err.message.includes('Bạn đã có một lịch hẹn đã được duyệt và đủ điều kiện')) {
+            setSuccessMessage(err.message);
+            setShowSuccess(true);
+            await fetchAppointmentHistory();
+          } else {
+            setError(err.message || 'Không thể đăng ký lại sự kiện. Vui lòng thử lại.');
+          }
         }
       } else {
-        setError('Bạn chưa đủ điều kiện đăng ký lại trực tuyến.');
+        setError(errorMessage || 'Bạn chưa đủ điều kiện đăng ký lại trực tuyến.');
       }
     } catch (err) {
       setError('Không thể gửi khảo sát. Vui lòng thử lại.');
@@ -155,6 +221,46 @@ const AppointmentHistory = () => {
         return newSet;
       });
       setPendingReregister(null);
+    }
+  };
+
+  const handleShowCertificate = async (appointmentId) => {
+    try {
+      setCertificateData(null);
+      setShowCertificate(true);
+      const res = await fetch(`https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Certificate/${appointmentId}`);
+      if (!res.ok) throw new Error('Không tìm thấy chứng nhận');
+      const data = await res.json();
+      setCertificateData(data);
+    } catch (err) {
+      setCertificateData({ error: err.message });
+    }
+  };
+
+  const handleDownloadPDF = async (appointmentId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Certificate/${appointmentId}/pdf`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Không thể tải PDF');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `chung-nhan-hien-mau-${appointmentId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      alert('Lỗi khi tải PDF: ' + error.message);
     }
   };
 
@@ -272,7 +378,7 @@ const AppointmentHistory = () => {
             {field('Ghi chú nhân viên:', appointment.staffNote)}
             {field('Trạng thái máu:', appointment.bloodStatus)}
             {field('Nhóm máu:', appointment.bloodType)}
-            {field('Đơn vị máu:', appointment.donationUnit)}
+            {field('Đơn vị máu:', appointment.donationUnit ? `${appointment.donationUnit} ml` : 'Chưa có')}
             {field('Địa điểm:', appointment.bloodLocation)}
             {field('Lý do hoãn:', appointment.deferralReasonText)}
             {field('Lời khuyên:', appointment.deferralAdvice)}
@@ -332,6 +438,53 @@ const AppointmentHistory = () => {
           appointmentId={selectedAppointmentForSurvey}
           onClose={closeSurveyAnswers}
         />
+      )}
+
+      {/* Modal chứng nhận */}
+      {showCertificate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 w-full max-w-lg mx-4 shadow-2xl border-2 border-yellow-200">
+            <h3 className="text-2xl font-bold mb-4 text-center text-yellow-700 flex items-center justify-center gap-2">
+              <FaCertificate className="text-yellow-500 text-3xl" />
+              Chứng nhận hiến máu
+            </h3>
+            {certificateData ? (
+              certificateData.error ? (
+                <div className="text-red-600 text-center">{certificateData.error}</div>
+              ) : (
+                <div className="space-y-2 text-base">
+                  <div><span className="font-semibold">Họ tên:</span> {certificateData.fullName}</div>
+                  <div><span className="font-semibold">Ngày sinh:</span> {certificateData.dateOfBirth}</div>
+                  <div><span className="font-semibold">Địa chỉ:</span> {certificateData.address}</div>
+                  <div><span className="font-semibold">Bệnh viện:</span> {certificateData.hospitalName}</div>
+                  <div><span className="font-semibold">Lượng máu hiến:</span> {certificateData.bloodAmount} ml</div>
+                  <div><span className="font-semibold">Ngày hiến máu:</span> {certificateData.donationDate}</div>
+                  <div><span className="font-semibold">Mã chứng nhận:</span> <span className="font-mono text-blue-700">{certificateData.certificateCode}</span></div>
+                  <div><span className="font-semibold">Ngày cấp:</span> {certificateData.issueDate}</div>
+                </div>
+              )
+            ) : (
+              <div className="text-center text-gray-500">Đang tải chứng nhận...</div>
+            )}
+            <div className="flex justify-end mt-6 gap-2">
+              {certificateData && !certificateData.error && (
+                <button
+                  onClick={() => handleDownloadPDF(certificateData.appointmentId)}
+                  className="btn btn-primary flex items-center gap-2"
+                >
+                  <FaDownload />
+                  Tải PDF
+                </button>
+              )}
+              <button
+                onClick={() => { setShowCertificate(false); setCertificateData(null); }}
+                className="btn btn-outline"
+              >
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -556,6 +709,16 @@ const AppointmentHistory = () => {
                           )}
                         </button>
                       )}
+
+                      {appointment.appointmentStatus === 'Đã hiến' ? (
+                        <button
+                          onClick={() => handleShowCertificate(appointment.appointmentId || appointment.id)}
+                          className="p-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 rounded-lg transition-colors duration-200"
+                          title="Xem chứng nhận hiến máu"
+                        >
+                          <FaCertificate className="text-sm" />
+                        </button>
+                      ) : null}
                     </div>
                   </div>
                 </div>

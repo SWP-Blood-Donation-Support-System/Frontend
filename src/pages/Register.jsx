@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaPhone, FaHeartbeat, FaCalendar, FaMapMarkerAlt, FaTint, FaKey } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaPhone, FaHeartbeat, FaCalendar, FaMapMarkerAlt, FaTint, FaKey, FaCheck, FaTimes } from 'react-icons/fa';
 import { sendRegistrationOTP, verifyRegistrationOTP } from '../utils/api';
 import Toast from '../components/Toast';
 
@@ -24,6 +24,10 @@ const Register = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   
+  // Validation states
+  const [validationErrors, setValidationErrors] = useState({});
+  const [touchedFields, setTouchedFields] = useState({});
+  
   // OTP states
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [otp, setOtp] = useState('');
@@ -43,11 +47,139 @@ const Register = () => {
     { id: 'O-', name: 'O-' }
   ];
 
+  // Validation functions
+  const validateField = (name, value) => {
+    switch (name) {
+      case 'username':
+        if (!value.trim()) return 'Username không được để trống';
+        if (value.length < 3) return 'Username phải có ít nhất 3 ký tự';
+        if (value.length > 20) return 'Username không được quá 20 ký tự';
+        if (!/^[a-zA-Z0-9_]+$/.test(value)) return 'Username chỉ được chứa chữ cái, số và dấu gạch dưới';
+        return '';
+
+      case 'fullName':
+        if (!value.trim()) return 'Họ và tên không được để trống';
+        if (value.length < 2) return 'Họ và tên phải có ít nhất 2 ký tự';
+        if (value.length > 50) return 'Họ và tên không được quá 50 ký tự';
+        if (!/^[a-zA-ZÀ-ỹ\s]+$/.test(value)) return 'Họ và tên chỉ được chứa chữ cái và khoảng trắng';
+        return '';
+
+      case 'email':
+        if (!value.trim()) return 'Email không được để trống';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return 'Email không hợp lệ';
+        return '';
+
+      case 'dateOfBirth': {
+        if (!value) return 'Ngày sinh không được để trống';
+        const birthDate = new Date(value);
+        const today = new Date();
+        const age = today.getFullYear() - birthDate.getFullYear();
+        if (age < 18) return 'Bạn phải từ 18 tuổi trở lên để đăng ký';
+        if (age > 100) return 'Ngày sinh không hợp lệ';
+        return '';
+      }
+
+      case 'gender':
+        if (!value) return 'Vui lòng chọn giới tính';
+        return '';
+
+      case 'phone':
+        if (!value.trim()) return 'Số điện thoại không được để trống';
+        if (!/^[0-9]{10,11}$/.test(value.replace(/\s/g, ''))) return 'Số điện thoại phải có 10-11 chữ số';
+        return '';
+
+      case 'address':
+        if (!value.trim()) return 'Địa chỉ không được để trống';
+        if (value.length < 10) return 'Địa chỉ phải có ít nhất 10 ký tự';
+        if (value.length > 200) return 'Địa chỉ không được quá 200 ký tự';
+        return '';
+
+      case 'password':
+        if (!value) return 'Mật khẩu không được để trống';
+        if (value.length < 8) return 'Mật khẩu phải có ít nhất 8 ký tự';
+        if (!/(?=.*[a-z])/.test(value)) return 'Mật khẩu phải có ít nhất 1 chữ thường';
+        if (!/(?=.*[A-Z])/.test(value)) return 'Mật khẩu phải có ít nhất 1 chữ hoa';
+        if (!/(?=.*\d)/.test(value)) return 'Mật khẩu phải có ít nhất 1 chữ số';
+        if (!/(?=.*[@$!%*?&])/.test(value)) return 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt (@$!%*?&)';
+        return '';
+
+      case 'confirmPassword':
+        if (!value) return 'Xác nhận mật khẩu không được để trống';
+        if (value !== formData.password) return 'Mật khẩu xác nhận không khớp';
+        return '';
+
+      default:
+        return '';
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    Object.keys(formData).forEach(key => {
+      const error = validateField(key, formData[key]);
+      if (error) errors[key] = error;
+    });
+    
+    const confirmPasswordError = validateField('confirmPassword', confirmPassword);
+    if (confirmPasswordError) errors.confirmPassword = confirmPasswordError;
+    
+    return errors;
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }));
+
+    // Real-time validation
+    if (touchedFields[name]) {
+      const error = validateField(name, value);
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: error
+      }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouchedFields(prev => ({
+      ...prev,
+      [name]: true
+    }));
+
+    const error = validateField(name, value);
+    setValidationErrors(prev => ({
+      ...prev,
+      [name]: error
+    }));
+  };
+
+  const handleConfirmPasswordChange = (e) => {
+    const value = e.target.value;
+    setConfirmPassword(value);
+
+    if (touchedFields.confirmPassword) {
+      const error = validateField('confirmPassword', value);
+      setValidationErrors(prev => ({
+        ...prev,
+        confirmPassword: error
+      }));
+    }
+  };
+
+  const handleConfirmPasswordBlur = (e) => {
+    setTouchedFields(prev => ({
+      ...prev,
+      confirmPassword: true
+    }));
+
+    const error = validateField('confirmPassword', e.target.value);
+    setValidationErrors(prev => ({
+      ...prev,
+      confirmPassword: error
     }));
   };
 
@@ -55,14 +187,20 @@ const Register = () => {
     e.preventDefault();
     setError('');
 
-    // Validation
-    if (formData.password !== confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
-      return;
-    }
+    // Mark all fields as touched
+    const allFields = { ...formData, confirmPassword };
+    const touched = {};
+    Object.keys(allFields).forEach(key => {
+      touched[key] = true;
+    });
+    setTouchedFields(touched);
 
-    if (formData.password.length < 6) {
-      setError('Mật khẩu phải có ít nhất 6 ký tự');
+    // Validate all fields
+    const errors = validateForm();
+    setValidationErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      setError('Vui lòng sửa các lỗi trong form');
       return;
     }
 
@@ -142,6 +280,18 @@ const Register = () => {
     setOtpError('');
   };
 
+  const getFieldStatus = (fieldName) => {
+    if (!touchedFields[fieldName]) return 'default';
+    return validationErrors[fieldName] ? 'error' : 'success';
+  };
+
+  const getFieldIcon = (fieldName) => {
+    const status = getFieldStatus(fieldName);
+    if (status === 'success') return <FaCheck className="h-5 w-5 text-green-500" />;
+    if (status === 'error') return <FaTimes className="h-5 w-5 text-red-500" />;
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       {showSuccess && (
@@ -202,10 +352,20 @@ const Register = () => {
                   required
                   value={formData.username}
                   onChange={handleChange}
-                  className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-3 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                  onBlur={handleBlur}
+                  className={`focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-10 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200 ${
+                    getFieldStatus('username') === 'error' ? 'border-red-300 focus:border-red-500 focus:ring-red-500' :
+                    getFieldStatus('username') === 'success' ? 'border-green-300 focus:border-green-500 focus:ring-green-500' : ''
+                  }`}
                   placeholder="Nhập username"
                 />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  {getFieldIcon('username')}
+                </div>
               </div>
+              {validationErrors.username && touchedFields.username && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.username}</p>
+              )}
             </div>
 
             <div>
@@ -223,10 +383,20 @@ const Register = () => {
                   required
                   value={formData.fullName}
                   onChange={handleChange}
-                  className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-3 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                  onBlur={handleBlur}
+                  className={`focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-10 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200 ${
+                    getFieldStatus('fullName') === 'error' ? 'border-red-300 focus:border-red-500 focus:ring-red-500' :
+                    getFieldStatus('fullName') === 'success' ? 'border-green-300 focus:border-green-500 focus:ring-green-500' : ''
+                  }`}
                   placeholder="Nguyễn Văn A"
                 />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  {getFieldIcon('fullName')}
+                </div>
               </div>
+              {validationErrors.fullName && touchedFields.fullName && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.fullName}</p>
+              )}
             </div>
 
             <div>
@@ -244,10 +414,20 @@ const Register = () => {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-3 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                  onBlur={handleBlur}
+                  className={`focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-10 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200 ${
+                    getFieldStatus('email') === 'error' ? 'border-red-300 focus:border-red-500 focus:ring-red-500' :
+                    getFieldStatus('email') === 'success' ? 'border-green-300 focus:border-green-500 focus:ring-green-500' : ''
+                  }`}
                   placeholder="you@example.com"
                 />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  {getFieldIcon('email')}
+                </div>
               </div>
+              {validationErrors.email && touchedFields.email && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.email}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -266,9 +446,19 @@ const Register = () => {
                     required
                     value={formData.dateOfBirth}
                     onChange={handleChange}
-                    className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-3 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                    onBlur={handleBlur}
+                    className={`focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-10 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200 ${
+                      getFieldStatus('dateOfBirth') === 'error' ? 'border-red-300 focus:border-red-500 focus:ring-red-500' :
+                      getFieldStatus('dateOfBirth') === 'success' ? 'border-green-300 focus:border-green-500 focus:ring-green-500' : ''
+                    }`}
                   />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    {getFieldIcon('dateOfBirth')}
+                  </div>
                 </div>
+                {validationErrors.dateOfBirth && touchedFields.dateOfBirth && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.dateOfBirth}</p>
+                )}
               </div>
 
               <div>
@@ -282,14 +472,24 @@ const Register = () => {
                     required
                     value={formData.gender}
                     onChange={handleChange}
-                    className="focus:ring-red-500 focus:border-red-500 block w-full py-3 px-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                    onBlur={handleBlur}
+                    className={`focus:ring-red-500 focus:border-red-500 block w-full py-3 px-3 pr-10 sm:text-sm border-gray-300 rounded-md transition-colors duration-200 ${
+                      getFieldStatus('gender') === 'error' ? 'border-red-300 focus:border-red-500 focus:ring-red-500' :
+                      getFieldStatus('gender') === 'success' ? 'border-green-300 focus:border-green-500 focus:ring-green-500' : ''
+                    }`}
                   >
                     <option value="">Chọn giới tính</option>
                     <option value="Nam">Nam</option>
                     <option value="Nữ">Nữ</option>
                     <option value="Khác">Khác</option>
                   </select>
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                    {getFieldIcon('gender')}
+                  </div>
                 </div>
+                {validationErrors.gender && touchedFields.gender && (
+                  <p className="mt-1 text-sm text-red-600">{validationErrors.gender}</p>
+                )}
               </div>
             </div>
 
@@ -308,10 +508,20 @@ const Register = () => {
                   required
                   value={formData.phone}
                   onChange={handleChange}
-                  className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-3 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                  onBlur={handleBlur}
+                  className={`focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-10 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200 ${
+                    getFieldStatus('phone') === 'error' ? 'border-red-300 focus:border-red-500 focus:ring-red-500' :
+                    getFieldStatus('phone') === 'success' ? 'border-green-300 focus:border-green-500 focus:ring-green-500' : ''
+                  }`}
                   placeholder="0123456789"
                 />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  {getFieldIcon('phone')}
+                </div>
               </div>
+              {validationErrors.phone && touchedFields.phone && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.phone}</p>
+              )}
             </div>
 
             <div>
@@ -329,10 +539,20 @@ const Register = () => {
                   required
                   value={formData.address}
                   onChange={handleChange}
-                  className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-3 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                  onBlur={handleBlur}
+                  className={`focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-10 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200 ${
+                    getFieldStatus('address') === 'error' ? 'border-red-300 focus:border-red-500 focus:ring-red-500' :
+                    getFieldStatus('address') === 'success' ? 'border-green-300 focus:border-green-500 focus:ring-green-500' : ''
+                  }`}
                   placeholder="123 Đường ABC, Quận XYZ, TP.HCM"
                 />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                  {getFieldIcon('address')}
+                </div>
               </div>
+              {validationErrors.address && touchedFields.address && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.address}</p>
+              )}
             </div>
 
             <div>
@@ -374,7 +594,11 @@ const Register = () => {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-10 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                  onBlur={handleBlur}
+                  className={`focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-10 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200 ${
+                    getFieldStatus('password') === 'error' ? 'border-red-300 focus:border-red-500 focus:ring-red-500' :
+                    getFieldStatus('password') === 'success' ? 'border-green-300 focus:border-green-500 focus:ring-green-500' : ''
+                  }`}
                   placeholder="••••••••"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -387,6 +611,31 @@ const Register = () => {
                   </button>
                 </div>
               </div>
+              {validationErrors.password && touchedFields.password && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.password}</p>
+              )}
+              {formData.password && (
+                <div className="mt-2">
+                  <p className="text-xs text-gray-600 mb-2">Mật khẩu phải có:</p>
+                  <div className="space-y-1">
+                    <div className={`flex items-center text-xs ${formData.password.length >= 8 ? 'text-green-600' : 'text-gray-400'}`}>
+                      <FaCheck className="mr-1" /> Ít nhất 8 ký tự
+                    </div>
+                    <div className={`flex items-center text-xs ${/(?=.*[a-z])/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                      <FaCheck className="mr-1" /> Ít nhất 1 chữ thường
+                    </div>
+                    <div className={`flex items-center text-xs ${/(?=.*[A-Z])/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                      <FaCheck className="mr-1" /> Ít nhất 1 chữ hoa
+                    </div>
+                    <div className={`flex items-center text-xs ${/(?=.*\d)/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                      <FaCheck className="mr-1" /> Ít nhất 1 chữ số
+                    </div>
+                    <div className={`flex items-center text-xs ${/(?=.*[@$!%*?&])/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                      <FaCheck className="mr-1" /> Ít nhất 1 ký tự đặc biệt (@$!%*?&)
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div>
@@ -403,8 +652,12 @@ const Register = () => {
                   type={showConfirmPassword ? 'text' : 'password'}
                   required
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-10 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200"
+                  onChange={handleConfirmPasswordChange}
+                  onBlur={handleConfirmPasswordBlur}
+                  className={`focus:ring-red-500 focus:border-red-500 block w-full pl-10 pr-10 py-3 sm:text-sm border-gray-300 rounded-md transition-colors duration-200 ${
+                    getFieldStatus('confirmPassword') === 'error' ? 'border-red-300 focus:border-red-500 focus:ring-red-500' :
+                    getFieldStatus('confirmPassword') === 'success' ? 'border-green-300 focus:border-green-500 focus:ring-green-500' : ''
+                  }`}
                   placeholder="••••••••"
                 />
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -417,6 +670,9 @@ const Register = () => {
                   </button>
                 </div>
               </div>
+              {validationErrors.confirmPassword && touchedFields.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">{validationErrors.confirmPassword}</p>
+              )}
             </div>
 
             <div>

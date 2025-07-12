@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaPlus, FaEdit, FaTrash, FaSpinner, FaSearch, FaFilter } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaPlus, FaEdit, FaTrash, FaSpinner, FaSearch, FaFilter, FaExclamationTriangle, FaCheck } from 'react-icons/fa';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '../utils/api';
 import Toast from '../components/Toast';
 
@@ -26,6 +26,116 @@ const EventsManagement = () => {
     maxParticipants: ''
   });
 
+  // Validation state
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
+
+  // Validation functions
+  const validateField = (name, value) => {
+    switch (name) {
+      case 'eventTitle': {
+        if (!value.trim()) return 'Tiêu đề sự kiện không được để trống';
+        if (value.trim().length < 5) return 'Tiêu đề sự kiện phải có ít nhất 5 ký tự';
+        if (value.trim().length > 100) return 'Tiêu đề sự kiện không được quá 100 ký tự';
+        return '';
+      }
+      
+      case 'eventContent': {
+        if (!value.trim()) return 'Nội dung sự kiện không được để trống';
+        if (value.trim().length < 20) return 'Nội dung sự kiện phải có ít nhất 20 ký tự';
+        if (value.trim().length > 1000) return 'Nội dung sự kiện không được quá 1000 ký tự';
+        return '';
+      }
+      
+      case 'location': {
+        if (!value.trim()) return 'Địa điểm không được để trống';
+        if (value.trim().length < 5) return 'Địa điểm phải có ít nhất 5 ký tự';
+        if (value.trim().length > 200) return 'Địa điểm không được quá 200 ký tự';
+        return '';
+      }
+      
+      case 'maxParticipants': {
+        if (!value) return 'Số lượng tối đa không được để trống';
+        const num = parseInt(value);
+        if (isNaN(num) || num < 1) return 'Số lượng tối đa phải là số nguyên dương';
+        if (num > 1000) return 'Số lượng tối đa không được quá 1000';
+        return '';
+      }
+      
+      case 'eventDate': {
+        if (!value) return 'Ngày diễn ra không được để trống';
+        const selectedDate = new Date(value);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (selectedDate < today) return 'Ngày diễn ra không được là ngày trong quá khứ';
+        return '';
+      }
+      
+      case 'eventTime': {
+        if (!value) return 'Giờ diễn ra không được để trống';
+        return '';
+      }
+      
+      default:
+        return '';
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    Object.keys(formData).forEach(field => {
+      const error = validateField(field, formData[field]);
+      if (error) newErrors[field] = error;
+    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Real-time validation
+    if (touched[name]) {
+      const error = validateField(name, value);
+      setErrors(prev => ({
+        ...prev,
+        [name]: error
+      }));
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    setTouched(prev => ({
+      ...prev,
+      [name]: true
+    }));
+
+    const error = validateField(name, value);
+    setErrors(prev => ({
+      ...prev,
+      [name]: error
+    }));
+  };
+
+  const getFieldClassName = (fieldName) => {
+    const baseClasses = "w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent";
+    const hasError = errors[fieldName] && touched[fieldName];
+    const hasSuccess = !errors[fieldName] && touched[fieldName] && formData[fieldName];
+    
+    if (hasError) {
+      return `${baseClasses} border-red-300 focus:ring-red-500 bg-red-50`;
+    } else if (hasSuccess) {
+      return `${baseClasses} border-green-300 focus:ring-green-500 bg-green-50`;
+    } else {
+      return `${baseClasses} border-gray-300 focus:ring-red-500`;
+    }
+  };
+
   useEffect(() => {
     fetchEvents();
   }, []);
@@ -43,16 +153,22 @@ const EventsManagement = () => {
     }
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Mark all fields as touched and validate
+    const allTouched = {};
+    Object.keys(formData).forEach(field => {
+      allTouched[field] = true;
+    });
+    setTouched(allTouched);
+    
+    // Validate form
+    if (!validateForm()) {
+      setError('Vui lòng kiểm tra và sửa các lỗi trong form.');
+      return;
+    }
+    
     setSubmitting(true);
     setError('');
 
@@ -93,6 +209,8 @@ const EventsManagement = () => {
       location: event.location,
       maxParticipants: event.maxParticipants.toString()
     });
+    setErrors({});
+    setTouched({});
     setShowModal(true);
   };
 
@@ -126,6 +244,8 @@ const EventsManagement = () => {
     });
     setIsEditing(false);
     setEditingEvent(null);
+    setErrors({});
+    setTouched({});
   };
 
   const openCreateModal = () => {
@@ -461,10 +581,17 @@ const EventsManagement = () => {
                       name="eventTitle"
                       value={formData.eventTitle}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      onBlur={handleBlur}
+                      className={getFieldClassName('eventTitle')}
                       placeholder="Nhập tiêu đề sự kiện"
                       required
                     />
+                    {touched.eventTitle && errors.eventTitle && (
+                      <p className="text-red-500 text-xs mt-1"><FaExclamationTriangle className="inline mr-1" /> {errors.eventTitle}</p>
+                    )}
+                    {formData.eventTitle && !errors.eventTitle && (
+                      <p className="text-green-600 text-xs mt-1"><FaCheck className="inline mr-1" /> Tốt</p>
+                    )}
                   </div>
 
                   <div>
@@ -476,11 +603,17 @@ const EventsManagement = () => {
                       name="maxParticipants"
                       value={formData.maxParticipants}
                       onChange={handleInputChange}
-                      min="1"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      onBlur={handleBlur}
+                      className={getFieldClassName('maxParticipants')}
                       placeholder="Nhập số lượng"
                       required
                     />
+                    {touched.maxParticipants && errors.maxParticipants && (
+                      <p className="text-red-500 text-xs mt-1"><FaExclamationTriangle className="inline mr-1" /> {errors.maxParticipants}</p>
+                    )}
+                    {formData.maxParticipants && !errors.maxParticipants && (
+                      <p className="text-green-600 text-xs mt-1"><FaCheck className="inline mr-1" /> Tốt</p>
+                    )}
                   </div>
                 </div>
 
@@ -492,11 +625,18 @@ const EventsManagement = () => {
                     name="eventContent"
                     value={formData.eventContent}
                     onChange={handleInputChange}
+                    onBlur={handleBlur}
                     rows="4"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                    className={getFieldClassName('eventContent')}
                     placeholder="Mô tả chi tiết về sự kiện"
                     required
                   />
+                  {touched.eventContent && errors.eventContent && (
+                    <p className="text-red-500 text-xs mt-1"><FaExclamationTriangle className="inline mr-1" /> {errors.eventContent}</p>
+                  )}
+                  {formData.eventContent && !errors.eventContent && (
+                    <p className="text-green-600 text-xs mt-1"><FaCheck className="inline mr-1" /> Tốt</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -509,9 +649,16 @@ const EventsManagement = () => {
                       name="eventDate"
                       value={formData.eventDate}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      onBlur={handleBlur}
+                      className={getFieldClassName('eventDate')}
                       required
                     />
+                    {touched.eventDate && errors.eventDate && (
+                      <p className="text-red-500 text-xs mt-1"><FaExclamationTriangle className="inline mr-1" /> {errors.eventDate}</p>
+                    )}
+                    {formData.eventDate && !errors.eventDate && (
+                      <p className="text-green-600 text-xs mt-1"><FaCheck className="inline mr-1" /> Tốt</p>
+                    )}
                   </div>
 
                   <div>
@@ -523,9 +670,16 @@ const EventsManagement = () => {
                       name="eventTime"
                       value={formData.eventTime}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      onBlur={handleBlur}
+                      className={getFieldClassName('eventTime')}
                       required
                     />
+                    {touched.eventTime && errors.eventTime && (
+                      <p className="text-red-500 text-xs mt-1"><FaExclamationTriangle className="inline mr-1" /> {errors.eventTime}</p>
+                    )}
+                    {formData.eventTime && !errors.eventTime && (
+                      <p className="text-green-600 text-xs mt-1"><FaCheck className="inline mr-1" /> Tốt</p>
+                    )}
                   </div>
 
                   <div>
@@ -537,10 +691,17 @@ const EventsManagement = () => {
                       name="location"
                       value={formData.location}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      onBlur={handleBlur}
+                      className={getFieldClassName('location')}
                       placeholder="Nhập địa điểm"
                       required
                     />
+                    {touched.location && errors.location && (
+                      <p className="text-red-500 text-xs mt-1"><FaExclamationTriangle className="inline mr-1" /> {errors.location}</p>
+                    )}
+                    {formData.location && !errors.location && (
+                      <p className="text-green-600 text-xs mt-1"><FaCheck className="inline mr-1" /> Tốt</p>
+                    )}
                   </div>
                 </div>
 

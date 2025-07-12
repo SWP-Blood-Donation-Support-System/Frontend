@@ -165,27 +165,14 @@ const Navbar = () => {
   };
 
   const handleLogout = () => {
-    try {
-      // Clear all state first
-      setIsLoggedIn(false);
-      setUser(null);
-      setIsOpen(false);
-      setNotifications([]);
-      setUnreadCount(0);
-      setUserNotifications([]);
-      setUserUnreadCount(0);
-      setAdminDropdownOpen(false);
-      setUserDropdownOpen(false);
-      setNotificationsOpen(false);
-      setUserNotificationsOpen(false);
-      
-      // Then call logout function
-      logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Force redirect even if there's an error
-      window.location.replace('/login');
-    }
+    logout();
+    setIsLoggedIn(false);
+    setUser(null);
+    setIsOpen(false);
+    setNotifications([]);
+    setUnreadCount(0);
+    setUserNotifications([]);
+    setUserUnreadCount(0);
   };
 
   // Base navigation links
@@ -204,7 +191,8 @@ const Navbar = () => {
         { path: '/blood-donation-management', label: 'Quản lý hiến máu' },
         { path: '/blog-management', label: 'Quản lý blog' },
         { path: '/admin/events', label: 'Quản lý sự kiện' },
-        { path: '/admin/emergencies', label: 'Quản lý đơn khẩn cấp' }
+        { path: '/admin/emergencies', label: 'Quản lý đơn khẩn cấp' },
+        { path: '/admin/blood-search', label: 'Tìm máu' }
       );
     } else {
       // For regular users, add blood-related features to navigation
@@ -355,7 +343,9 @@ const Navbar = () => {
                       {adminDropdownOpen && (
                         <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                           <Link to="/dashboard" className="block px-4 py-2 text-gray-700 hover:bg-red-50" onClick={() => setAdminDropdownOpen(false)}>Dashboard</Link>
-                          <Link to="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-red-50" onClick={() => setAdminDropdownOpen(false)}>Danh sách user</Link>
+                          {user?.role === 'Admin' && (
+                            <Link to="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-red-50" onClick={() => setAdminDropdownOpen(false)}>Danh sách user</Link>
+                          )}
                           <Link to="/admin/hospitals" className="block px-4 py-2 text-gray-700 hover:bg-red-50" onClick={() => setAdminDropdownOpen(false)}>Quản lý bệnh viện</Link>
                           <button onClick={() => { setAdminDropdownOpen(false); handleLogout(); }} className="w-full text-left px-4 py-2 text-gray-700 hover:bg-red-50">Đăng xuất</button>
                         </div>
@@ -707,9 +697,11 @@ const Navbar = () => {
                       <Link to="/dashboard" className="text-gray-700 hover:text-red-600 hover:bg-red-50 block px-3 py-2 rounded-lg text-base font-medium transition-all duration-200" onClick={() => setIsOpen(false)}>
                         Dashboard
                       </Link>
-                      <Link to="/admin/users" className="text-gray-700 hover:text-red-600 hover:bg-red-50 block px-3 py-2 rounded-lg text-base font-medium transition-all duration-200" onClick={() => setIsOpen(false)}>
-                        Danh sách user
-                      </Link>
+                      {user?.role === 'Admin' && (
+                        <Link to="/admin/users" className="text-gray-700 hover:text-red-600 hover:bg-red-50 block px-3 py-2 rounded-lg text-base font-medium transition-all duration-200" onClick={() => setIsOpen(false)}>
+                          Danh sách user
+                        </Link>
+                      )}
                       <Link to="/admin/hospitals" className="text-gray-700 hover:text-red-600 hover:bg-red-50 block px-3 py-2 rounded-lg text-base font-medium transition-all duration-200" onClick={() => setIsOpen(false)}>
                         Quản lý bệnh viện
                       </Link>

@@ -1,22 +1,28 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaTint } from 'react-icons/fa';
+import Toast from '../components/Toast';
+import { registerForEvent } from '../utils/api';
 
 const DonorRegistration = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [toast, setToast] = useState(null);
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+  const eventId = 'REPLACE_WITH_EVENT_ID'; // TODO: Lấy eventId thực tế hoặc truyền từ props/router
 
-  const onSubmit = async (data) => {
+  const onSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // TODO: Implement API call to save donor registration
-      console.log('Form data:', data);
-      alert('Đăng ký thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất.');
+      await registerForEvent(eventId);
+      setToast({ message: 'Đăng ký thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất.', type: 'success' });
     } catch (error) {
-      console.error('Error submitting form:', error);
-      alert('Có lỗi xảy ra. Vui lòng thử lại sau.');
+      let msg = error?.message;
+      if (msg === 'Tài khoản của bạn không đủ điều kiện đăng ký lịch hẹn.') {
+        msg = 'Bạn đã hiến máu trong 9 tháng gần đây, hãy quay lại sau. Liên hệ nhân viên để biết thêm thông tin';
+      }
+      setToast({ message: msg, type: 'error' });
     } finally {
       setIsSubmitting(false);
     }
@@ -24,6 +30,13 @@ const DonorRegistration = () => {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
       <h1 className="text-3xl font-bold text-center mb-8">Đăng ký hiến máu</h1>
 
       <form onSubmit={handleSubmit(onSubmit)} className="card space-y-6">

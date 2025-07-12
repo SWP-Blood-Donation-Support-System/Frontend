@@ -21,6 +21,10 @@ import CreateBlog from './pages/CreateBlog';
 import BlogManagement from './pages/BlogManagement';
 import EventsManagement from './pages/EventsManagement';
 import EmergencyManagement from './pages/EmergencyManagement';
+import AdminUsers from './pages/AdminUsers';
+import AdminHospitals from './pages/AdminHospitals';
+import BloodDonorSearch from './pages/BloodDonorSearch';
+import AdminBloodSearch from './pages/AdminBloodSearch';
 
 const queryClient = new QueryClient();
 
@@ -87,6 +91,26 @@ function App() {
               <Route path="/admin/emergencies" element={
                 <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
                   <EmergencyManagement />
+                </RoleBasedRoute>
+              } />
+              <Route path="/admin/users" element={
+                <RoleBasedRoute allowedRoles={['Admin']}>
+                  <AdminUsers />
+                </RoleBasedRoute>
+              } />
+              <Route path="/admin/hospitals" element={
+                <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+                  <AdminHospitals />
+                </RoleBasedRoute>
+              } />
+              <Route path="/admin/blood-donor-search" element={
+                <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+                  <BloodDonorSearch />
+                </RoleBasedRoute>
+              } />
+              <Route path="/admin/blood-search" element={
+                <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+                  <AdminBloodSearch />
                 </RoleBasedRoute>
               } />
             </Routes>

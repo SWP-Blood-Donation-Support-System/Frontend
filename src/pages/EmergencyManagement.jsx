@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getAuthToken, getUser } from '../utils/api';
 import { FaUser, FaCalendarAlt, FaTint, FaInfoCircle, FaHospital, FaStickyNote, FaImage, FaSearch, FaSort, FaSortUp, FaSortDown, FaCheck, FaTimes, FaEye, FaCheckCircle, FaTimesCircle, FaArrowDown, FaArrowUp, FaExclamationTriangle } from 'react-icons/fa';
+import Toast from '../components/Toast';
 
 const EmergencyManagement = () => {
   const [emergencies, setEmergencies] = useState([]);
@@ -18,6 +19,10 @@ const EmergencyManagement = () => {
   const [hospitals, setHospitals] = useState([]);
   const user = getUser();
   const isAdminOrStaff = user && (user.role === 'Admin' || user.role === 'Staff');
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success');
+  const [transferLoading, setTransferLoading] = useState(false);
 
   useEffect(() => {
     if (isAdminOrStaff) {
@@ -141,6 +146,12 @@ const EmergencyManagement = () => {
 
   const viewBloodComparison = async (emergencyId) => {
     try {
+      // Tìm emergency object từ danh sách để có đầy đủ thông tin
+      const emergency = emergencies.find(e => (e.emergencyId || e.id) == emergencyId);
+      if (!emergency) {
+        throw new Error('Không tìm thấy đơn khẩn cấp');
+      }
+
       const response = await fetch(`https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Emergency/CompareBlood/${emergencyId}`, {
         method: 'GET',
         headers: {
@@ -155,8 +166,8 @@ const EmergencyManagement = () => {
       const data = await response.json();
       console.log('Blood comparison response:', data);
       
-      // Hiển thị thông tin so sánh máu trong modal
-      setSelectedEmergency({ ...selectedEmergency, bloodComparison: data });
+      // Hiển thị thông tin so sánh máu trong modal với đầy đủ thông tin emergency
+      setSelectedEmergency({ ...emergency, bloodComparison: data });
       setShowBloodComparisonModal(true);
     } catch (error) {
       alert(`Lỗi: ${error.message}`);
@@ -203,6 +214,84 @@ const EmergencyManagement = () => {
       </div>
     );
   }
+
+  // Hàm chuyển máu
+  const handleTransferBlood = async () => {
+    if (!selectedEmergency || !selectedEmergency.bloodComparison) return;
+    setTransferLoading(true);
+    try {
+      // Always get all 4 fields, fallback to selectedEmergency, and provide defaults if missing
+      const bloodType =
+        selectedEmergency.bloodComparison.bloodType ||
+        selectedEmergency.bloodType ||
+        (Array.isArray(selectedEmergency.bloodComparison.details) && selectedEmergency.bloodComparison.details.length > 0
+          ? selectedEmergency.bloodComparison.details[0].bloodType
+          : '') || '';
+      // Ensure requiredUnits is a number
+      let requiredUnits = selectedEmergency.bloodComparison.requiredUnits ?? selectedEmergency.requiredUnits;
+      requiredUnits = Number(requiredUnits) || 0;
+      // Ensure hospitalId is a number
+      let hospitalId = selectedEmergency.hospitalId;
+      hospitalId = Number(hospitalId) || 1;
+      // Note: lấy từ emergencyNote nếu có, không thì sinh tự động
+      const note = selectedEmergency.emergencyNote && selectedEmergency.emergencyNote.trim().length > 0
+        ? selectedEmergency.emergencyNote
+        : `Chuyển máu cho đơn khẩn cấp #${selectedEmergency.emergencyId || selectedEmergency.id || ''}`;
+
+      // Bước 1: Chuyển máu từ kho
+      const transferRes = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/blood-inventory/use', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getAuthToken()}`,
+        },
+        body: JSON.stringify({
+          bloodType,
+          requiredUnits,
+          note,
+          hospitalId,
+        }),
+      });
+      
+      if (!transferRes.ok) {
+        const errorData = await transferRes.text();
+        throw new Error(`Chuyển máu thất bại: ${errorData}`);
+      }
+
+      // Bước 2: Cập nhật trạng thái đơn khẩn cấp thành "Lượng máu đang được chuyển đến"
+      const emergencyId = selectedEmergency.emergencyId;
+      if (!emergencyId) {
+        throw new Error('Không tìm thấy emergencyId');
+      }
+      
+      const statusRes = await fetch(`https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Emergency/SetStatusTransferring/${emergencyId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getAuthToken()}`,
+        },
+      });
+
+      if (!statusRes.ok) {
+        const errorData = await statusRes.text();
+        console.warn('Cập nhật trạng thái thất bại:', errorData);
+        // Không throw error vì chuyển máu đã thành công, chỉ cảnh báo
+      }
+
+      setToastMessage('Chuyển máu thành công và đã cập nhật trạng thái đơn khẩn cấp!');
+      setToastType('success');
+      setShowToast(true);
+      setShowBloodComparisonModal(false);
+      setSelectedEmergency(null);
+      await fetchEmergencies();
+    } catch (err) {
+      setToastMessage(err.message || 'Có lỗi khi chuyển máu');
+      setToastType('error');
+      setShowToast(true);
+    } finally {
+      setTransferLoading(false);
+    }
+  };
 
   return (
     <div className="w-full min-h-screen bg-gradient-to-br from-red-50 to-white py-8 px-2 md:px-8">
@@ -271,7 +360,7 @@ const EmergencyManagement = () => {
                   sorted.map((item, idx) => {
                     const isCreatorAdminOrStaff = item.username === user?.username && (user?.role === 'Admin' || user?.role === 'Staff');
                     const canApprove = !isCreatorAdminOrStaff && (item.emergencyStatus === 'Chờ xét duyệt' || !item.emergencyStatus);
-                    const canViewBloodComparison = item.emergencyStatus === 'lượng máu đang được chuyển đến';
+                    const canViewBloodComparison = item.emergencyStatus === 'Đã xét duyệt';
                     const status = (item.emergencyStatus ?? 'Chờ xét duyệt').toLowerCase();
                     let badgeColor = 'bg-gray-200 text-gray-700';
                     if (status.includes('chờ')) badgeColor = 'bg-yellow-100 text-yellow-800';
@@ -283,7 +372,16 @@ const EmergencyManagement = () => {
                       <tr key={item.emergencyId || item.id || idx} className={"transition-colors " + (idx % 2 === 0 ? 'bg-white hover:bg-red-50' : 'bg-red-50 hover:bg-red-100')}>
                         <td className="px-6 py-4 text-center font-semibold align-middle">{item.emergencyId ?? item.id ?? <span className="text-gray-400">Chưa có</span>}</td>
                         <td className="px-6 py-4 text-center align-middle">{item.username ?? <span className="text-gray-400">Chưa có</span>}</td>
-                        <td className="px-6 py-4 text-center align-middle">{item.emergencyDate ? item.emergencyDate.slice(0,10) : <span className="text-gray-400">Chưa có</span>}</td>
+                        <td className="px-6 py-4 text-center align-middle">
+                          {item.emergencyDate ? (
+                            <div>
+                              <div className="font-medium">{new Date(item.emergencyDate).toLocaleDateString('vi-VN')}</div>
+                              <div className="text-sm text-gray-500">{new Date(item.emergencyDate).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">Chưa có</span>
+                          )}
+                        </td>
                         <td className="px-6 py-4 text-center font-bold text-red-700 align-middle">{item.bloodType ?? <span className="text-gray-400">Chưa có</span>}</td>
                         <td className="px-6 py-4 text-center align-middle">
                           <span className={`inline-block px-4 py-1 rounded-full text-base font-semibold shadow-sm border ${badgeColor} min-w-[120px] text-center`}>
@@ -438,7 +536,7 @@ const EmergencyManagement = () => {
                           <div className="text-xl font-bold text-gray-800">
                             {selectedEmergency.bloodComparison.availableUnits}
                           </div>
-                          <div className="text-xs text-gray-600">Đơn vị có sẵn</div>
+                          <div className="text-xs text-gray-600">Đơn vị có sẵn (ml)</div>
                         </div>
                       </div>
                     </div>
@@ -456,7 +554,7 @@ const EmergencyManagement = () => {
                         <div className="text-lg font-bold text-blue-600">
                           {selectedEmergency.bloodComparison.requiredUnits}
                         </div>
-                        <p className="text-blue-600 text-xs">Đơn vị máu cần thiết</p>
+                        <p className="text-blue-600 text-xs">Đơn vị máu cần thiết (ml)</p>
                       </div>
 
                       {/* Available Units */}
@@ -470,7 +568,7 @@ const EmergencyManagement = () => {
                         <div className="text-lg font-bold text-green-600">
                           {selectedEmergency.bloodComparison.availableUnits}
                         </div>
-                        <p className="text-green-600 text-xs">Đơn vị máu trong kho</p>
+                        <p className="text-green-600 text-xs">Đơn vị máu trong kho (ml)</p>
                       </div>
                     </div>
 
@@ -521,7 +619,7 @@ const EmergencyManagement = () => {
                                 </div>
                                 <div className="text-right">
                                   <div className="font-bold text-sm text-gray-900">
-                                    {detail.volume} đơn vị
+                                    {detail.volume} ml
                                   </div>
                                   <div className="flex items-center space-x-1 text-xs text-gray-600">
                                     <FaCalendarAlt className="text-xs" />
@@ -598,7 +696,23 @@ const EmergencyManagement = () => {
                 )}
               </div>
             </div>
-            <div className="flex justify-end px-3 pb-3">
+            <div className="flex justify-end px-3 pb-3 gap-2">
+              
+              {/* Nút chuyển máu nếu đủ máu và đã được xét duyệt */}
+              {selectedEmergency?.bloodComparison?.isEnough && 
+               selectedEmergency?.emergencyStatus === 'Đã xét duyệt' && (
+                <button
+                  onClick={handleTransferBlood}
+                  disabled={transferLoading}
+                  className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-white bg-green-600 border border-green-700 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {transferLoading ? (
+                    <span className="animate-spin mr-2 w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+                  ) : null}
+                  <FaCheckCircle className="w-4 h-4 mr-1" />
+                  Chuyển máu
+                </button>
+              )}
               <button
                 onClick={() => {
                   setShowBloodComparisonModal(false);
@@ -665,7 +779,7 @@ const EmergencyManagement = () => {
                       <span className="ml-2 font-bold text-lg">{selectedEmergency?.bloodType || 'Chưa có'}</span>
                     </p>
                     <p className="text-sm text-red-700">
-                      <span className="font-medium">Số đơn vị cần:</span> {selectedEmergency?.requiredUnits || 'Chưa có'}
+                                              <span className="font-medium">Số đơn vị cần:</span> {selectedEmergency?.requiredUnits || 'Chưa có'} ml
                     </p>
                   </div>
                   <div>
@@ -745,6 +859,14 @@ const EmergencyManagement = () => {
             </div>
           </div>
         </div>
+      )}
+      {/* Toast thông báo */}
+      {showToast && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          onClose={() => setShowToast(false)}
+        />
       )}
     </div>
   );

@@ -728,7 +728,7 @@ export const getBloodInventory = async () => {
       throw new Error('Bạn cần đăng nhập để xem thông tin kho máu');
     }
 
-    const response = await fetch(`${API_BASE_URL}/blood-inventory`, {
+    const response = await fetch(`${API_BASE_URL}/blood-inventory/blood-bank`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

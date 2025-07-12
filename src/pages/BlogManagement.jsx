@@ -15,9 +15,44 @@ const BlogManagement = () => {
     blogImage: '',
     authorName: ''
   });
+  const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const user = getUser();
+
+  // Validation functions
+  const validateField = (name, value) => {
+    switch (name) {
+      case 'blogTitle':
+        if (!value.trim()) return 'Vui lòng nhập tiêu đề bài viết';
+        if (value.trim().length < 5) return 'Tiêu đề phải có ít nhất 5 ký tự';
+        if (value.trim().length > 200) return 'Tiêu đề không được vượt quá 200 ký tự';
+        return '';
+      case 'blogContent':
+        if (!value.trim()) return 'Vui lòng nhập nội dung bài viết';
+        if (value.trim().length < 50) return 'Nội dung phải có ít nhất 50 ký tự';
+        if (value.trim().length > 5000) return 'Nội dung không được vượt quá 5000 ký tự';
+        return '';
+      case 'authorName':
+        if (value.trim() && value.trim().length < 2) return 'Tên tác giả phải có ít nhất 2 ký tự';
+        if (value.trim() && value.trim().length > 100) return 'Tên tác giả không được vượt quá 100 ký tự';
+        return '';
+      case 'blogImage':
+        if (value.trim() && !isValidUrl(value.trim())) return 'Vui lòng nhập URL hợp lệ';
+        return '';
+      default:
+        return '';
+    }
+  };
+
+  const isValidUrl = (string) => {
+    try {
+      new URL(string);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   useEffect(() => {
     fetchBlogs();
@@ -47,6 +82,7 @@ const BlogManagement = () => {
 
   const openCreateModal = () => {
     setFormData({ blogTitle: '', blogContent: '', blogImage: '', authorName: user?.fullName || user?.username || '' });
+    setErrors({});
     setIsEdit(false);
     setShowModal(true);
   };
@@ -58,6 +94,7 @@ const BlogManagement = () => {
       blogImage: blog.blogImage || '',
       authorName: blog.authorName || ''
     });
+    setErrors({});
     setSelectedBlog(blog);
     setIsEdit(true);
     setShowModal(true);
@@ -79,12 +116,38 @@ const BlogManagement = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Validate field when user types
+    const fieldError = validateField(name, value);
+    setErrors(prev => ({
+      ...prev,
+      [name]: fieldError
+    }));
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    Object.keys(formData).forEach(key => {
+      const error = validateField(key, formData[key]);
+      if (error) {
+        newErrors[key] = error;
+      }
+    });
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setError('');
+
+    // Validate all fields
+    if (!validateForm()) {
+      setError('Vui lòng kiểm tra và sửa các lỗi trong form');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       if (isEdit && selectedBlog) {
         await updateBlogPost(selectedBlog.blogId, formData);
@@ -92,6 +155,7 @@ const BlogManagement = () => {
         await createBlogPost({ ...formData, username: user?.username || '' });
       }
       setShowModal(false);
+      setErrors({});
       await fetchBlogs();
     } catch (err) {
       setError(err.message || 'Lỗi khi lưu blog');
@@ -272,11 +336,18 @@ const BlogManagement = () => {
                   name="blogTitle"
                   value={formData.blogTitle}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                    errors.blogTitle ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Nhập tiêu đề bài viết..."
-                  required
                   maxLength={200}
                 />
+                {errors.blogTitle && (
+                  <p className="text-red-600 text-sm mt-1 flex items-center">
+                    <FaTimes className="mr-1" />
+                    {errors.blogTitle}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -287,9 +358,17 @@ const BlogManagement = () => {
                   name="authorName"
                   value={formData.authorName}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                    errors.authorName ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Tên tác giả"
                 />
+                {errors.authorName && (
+                  <p className="text-red-600 text-sm mt-1 flex items-center">
+                    <FaTimes className="mr-1" />
+                    {errors.authorName}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -300,9 +379,17 @@ const BlogManagement = () => {
                   name="blogImage"
                   value={formData.blogImage}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent ${
+                    errors.blogImage ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="https://example.com/image.jpg"
                 />
+                {errors.blogImage && (
+                  <p className="text-red-600 text-sm mt-1 flex items-center">
+                    <FaTimes className="mr-1" />
+                    {errors.blogImage}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -313,12 +400,19 @@ const BlogManagement = () => {
                   name="blogContent"
                   value={formData.blogContent}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-vertical"
+                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-vertical ${
+                    errors.blogContent ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   placeholder="Viết nội dung bài viết của bạn ở đây..."
                   rows={8}
-                  required
                   maxLength={5000}
                 />
+                {errors.blogContent && (
+                  <p className="text-red-600 text-sm mt-1 flex items-center">
+                    <FaTimes className="mr-1" />
+                    {errors.blogContent}
+                  </p>
+                )}
               </div>
 
               <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">

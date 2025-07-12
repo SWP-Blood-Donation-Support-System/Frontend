@@ -93,34 +93,66 @@ const Events = () => {
       // Bắt buộc trả lời tất cả các câu hỏi
       for (const q of surveyQuestions) {
         const ans = answers[q.questionId];
-        if (!ans || (q.questionType === 'single' && !ans.optionId) || (q.questionType === 'multiple' && (!ans.options || ans.options.length === 0))) {
+        
+        // Kiểm tra câu hỏi có được trả lời chưa
+        if (!ans) {
           eligible = false;
           errorMessage = 'Bạn phải trả lời tất cả các câu hỏi trước khi nộp khảo sát.';
           break;
         }
-        // Câu hỏi số 1: chỉ kiểm tra có trả lời, không kiểm tra nội dung
-        if (q.questionId === 1) continue;
+        
         if (q.questionType === 'single') {
-          const opt = q.options.find(o => o.optionId === ans?.optionId);
+          if (!ans.optionId) {
+            eligible = false;
+            errorMessage = 'Bạn phải trả lời tất cả các câu hỏi trước khi nộp khảo sát.';
+            break;
+          }
+          
+          const opt = q.options.find(o => o.optionId === ans.optionId);
           if (opt?.requireText && !ans[`text_${opt.optionId}`]) {
             eligible = false;
             errorMessage = 'Vui lòng nhập chi tiết cho các câu trả lời yêu cầu.';
+            break;
           }
+          
           if (opt?.requireText && ans[`text_${opt.optionId}`]) {
             needsStaffReview = true;
           }
+          
+          // Câu hỏi số 1: chỉ kiểm tra có trả lời, không kiểm tra nội dung
+          if (q.questionId === 1) continue;
+          
           if (!needsStaffReview && opt && opt.optionText !== 'Không') {
             eligible = false;
-            errorMessage = 'Bạn chưa đủ điều kiện đăng ký trực tuyến. Vui lòng liên hệ ban tổ chức hoặc chờ xác nhận từ nhân viên.';
+            errorMessage = 'Bạn chưa đủ điều kiện đăng ký trực tuyến.';
+            break;
           }
         }
+        
         if (q.questionType === 'multiple') {
+          if (!ans.options || ans.options.length === 0) {
+            eligible = false;
+            errorMessage = 'Bạn phải trả lời tất cả các câu hỏi trước khi nộp khảo sát.';
+            break;
+          }
+          
           for (const optionId of ans.options) {
             const opt = q.options.find(o => o.optionId === optionId);
+            if (opt?.requireText && !ans[`text_${optionId}`]) {
+              eligible = false;
+              errorMessage = 'Vui lòng nhập chi tiết cho các câu trả lời yêu cầu.';
+              break;
+            }
             if (opt?.requireText && ans[`text_${optionId}`]) {
               needsStaffReview = true;
             }
           }
+          
+          if (!eligible) break; // Nếu đã có lỗi requireText thì dừng
+          
+          // Câu hỏi số 1: chỉ kiểm tra có trả lời, không kiểm tra nội dung
+          if (q.questionId === 1) continue;
+          
           if (!needsStaffReview) {
             const selectedOptions = ans.options.map(id => {
               const opt = q.options.find(o => o.optionId === id);
@@ -128,7 +160,8 @@ const Events = () => {
             });
             if (!selectedOptions.every(text => text === 'Không')) {
               eligible = false;
-              errorMessage = 'Bạn chưa đủ điều kiện đăng ký trực tuyến. Vui lòng liên hệ ban tổ chức hoặc chờ xác nhận từ nhân viên.';
+              errorMessage = 'Bạn chưa đủ điều kiện đăng ký trực tuyến.';
+              break;
             }
           }
         }
@@ -149,6 +182,12 @@ const Events = () => {
       }
 
       try {
+        // Kiểm tra pendingRegister có tồn tại không
+        if (!pendingRegister || !pendingRegister.eventId) {
+          setError('Thông tin sự kiện không hợp lệ. Vui lòng thử lại.');
+          return;
+        }
+
         // Gọi API mới để tạo lịch hẹn và lưu khảo sát cùng lúc
         await registerAppointmentWithSurvey(pendingRegister.eventId, answers);
         if (needsStaffReview) {
@@ -162,7 +201,15 @@ const Events = () => {
         // Refresh danh sách sự kiện đã đăng ký từ server
         await fetchUserRegisteredEvents();
       } catch (err) {
-        setError(err.message || 'Không thể đăng ký sự kiện. Vui lòng thử lại.');
+        // Kiểm tra nếu đây là thông báo về lịch hẹn đã được duyệt
+        if (err.message && err.message.includes('Bạn đã có một lịch hẹn đã được duyệt và đủ điều kiện')) {
+          setSuccessMessage(err.message);
+          setShowSuccess(true);
+          // Refresh danh sách sự kiện đã đăng ký từ server
+          await fetchUserRegisteredEvents();
+        } else {
+          setError(err.message || 'Không thể đăng ký sự kiện. Vui lòng thử lại.');
+        }
       }
     } catch (err) {
       setSurveyError('Không thể gửi khảo sát. Vui lòng thử lại.');
@@ -174,6 +221,7 @@ const Events = () => {
         return newSet;
       });
       setPendingRegister(null);
+      // Không xóa surveyError ở đây để giữ thông báo lỗi validation
     }
   };
 
