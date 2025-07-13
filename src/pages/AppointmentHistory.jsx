@@ -23,6 +23,9 @@ const AppointmentHistory = () => {
   const [user, setUser] = useState(null);
   const [showCertificate, setShowCertificate] = useState(false);
   const [certificateData, setCertificateData] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('error');
 
   useEffect(() => {
     const currentUser = getUser();
@@ -260,7 +263,9 @@ const AppointmentHistory = () => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      alert('Lỗi khi tải PDF: ' + error.message);
+      setToastMessage('Lỗi khi tải PDF: ' + error.message);
+      setToastType('error');
+      setShowToast(true);
     }
   };
 
@@ -731,6 +736,16 @@ const AppointmentHistory = () => {
       {/* Appointment Detail Modal */}
       {showModal && (
         <AppointmentDetailModal appointment={selectedAppointment} onClose={() => setShowModal(false)} />
+      )}
+
+      {/* Toast notification */}
+      {showToast && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          duration={4000}
+          onClose={() => setShowToast(false)}
+        />
       )}
     </div>
   );

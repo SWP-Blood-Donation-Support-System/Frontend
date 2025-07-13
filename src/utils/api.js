@@ -531,13 +531,22 @@ export const createBlogPost = async (blogData) => {
 
     console.log('Creating blog post:', blogData);
 
+    // Map the data to match the new API structure
+    const requestData = {
+      blogTitle: blogData.blogTitle,
+      blogContent: blogData.blogContent,
+      blogImage: blogData.blogImage || '',
+      blogStatus: blogData.blogStatus || 'available',
+      blogDetail: blogData.blogDetail || blogData.blogContent
+    };
+
     const response = await fetch(`${API_BASE_URL}/Blog/CreateBlog`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(blogData)
+      body: JSON.stringify(requestData)
     });
 
     console.log('Create blog response status:', response.status);
@@ -590,7 +599,7 @@ export const getAllBlogPosts = async () => {
 // Get blog post by ID
 export const getBlogPostById = async (blogId) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/Blog/GetBlogById/${blogId}`, {
+    const response = await fetch(`${API_BASE_URL}/Blog/GetBlogDetail/${blogId}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -620,13 +629,22 @@ export const updateBlogPost = async (blogId, blogData) => {
 
     console.log('Updating blog post:', { blogId, blogData });
 
+    // Map the data to match the new API structure
+    const requestData = {
+      blogTitle: blogData.blogTitle,
+      blogContent: blogData.blogContent,
+      blogImage: blogData.blogImage || '',
+      blogStatus: blogData.blogStatus || 'Published',
+      blogDetail: blogData.blogDetail || blogData.blogContent
+    };
+
     const response = await fetch(`${API_BASE_URL}/Blog/UpdateBlog/${blogId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(blogData)
+      body: JSON.stringify(requestData)
     });
 
     console.log('Update blog response status:', response.status);

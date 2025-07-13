@@ -2,11 +2,15 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaTint, FaHistory, FaEdit, FaIdCard } from 'react-icons/fa';
 import { getUser } from '../utils/api';
+import Toast from '../components/Toast';
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success');
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   useEffect(() => {
@@ -48,10 +52,14 @@ const Profile = () => {
       // TODO: Implement API call to update user profile
       console.log('Updated profile data:', data);
       setIsEditing(false);
-      alert('Cập nhật thông tin thành công!');
+      setToastMessage('Cập nhật thông tin thành công!');
+      setToastType('success');
+      setShowToast(true);
     } catch (error) {
       console.error('Error updating profile:', error);
-      alert('Có lỗi xảy ra. Vui lòng thử lại sau.');
+      setToastMessage('Có lỗi xảy ra. Vui lòng thử lại sau.');
+      setToastType('error');
+      setShowToast(true);
     }
   };
 
@@ -366,6 +374,16 @@ const Profile = () => {
           ))}
         </div>
       </div>
+
+      {/* Toast notification */}
+      {showToast && (
+        <Toast
+          message={toastMessage}
+          type={toastType}
+          duration={4000}
+          onClose={() => setShowToast(false)}
+        />
+      )}
     </div>
   );
 };

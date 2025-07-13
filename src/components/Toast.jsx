@@ -61,11 +61,11 @@ const Toast = ({ message, type = 'success', duration = 3000, onClose, action }) 
 
   return (
     <div
-      className={`fixed top-4 right-4 z-50 transform transition-all duration-300 ${
+      className={`fixed top-4 right-4 z-[9999] transform transition-all duration-300 ${
         isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
       }`}
     >
-      <div className={`${getBgColor()} border rounded-lg shadow-lg p-4 max-w-sm`}>
+      <div className={`${getBgColor()} border rounded-lg shadow-2xl p-4 max-w-sm backdrop-blur-sm`}>
         <div className="flex items-start">
           <div className="flex-shrink-0">
             {getIcon()}

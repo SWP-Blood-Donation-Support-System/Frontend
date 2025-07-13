@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FaHospital, FaSearch, FaPlus } from 'react-icons/fa';
 import { apiCall } from '../utils/api';
+import ImageUpload from '../components/ImageUpload';
 
 const AdminHospitals = () => {
   const [hospitals, setHospitals] = useState([]);
@@ -133,8 +134,13 @@ const AdminHospitals = () => {
                 <input name="hospitalPhone" value={form.hospitalPhone} onChange={handleFormChange} className="input w-full" required />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Ảnh (URL)</label>
-                <input name="hospitalImage" value={form.hospitalImage} onChange={handleFormChange} className="input w-full" />
+                <label className="block text-sm font-medium mb-1">Ảnh bệnh viện (tùy chọn)</label>
+                <ImageUpload
+                  value={form.hospitalImage}
+                  onChange={(url) => setForm(prev => ({ ...prev, hospitalImage: url }))}
+                  placeholder="Kéo thả ảnh vào đây hoặc click để chọn file"
+                  disabled={submitting}
+                />
               </div>
               {formError && <div className="text-red-600 text-sm mb-2">{formError}</div>}
               <div className="flex justify-end gap-2 mt-4">

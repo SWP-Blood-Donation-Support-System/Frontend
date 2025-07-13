@@ -21,6 +21,7 @@ import {
   FaQuestion,
   FaInfoCircle
 } from 'react-icons/fa';
+import ImageUpload from '../components/ImageUpload';
 
 const EmergencyRegisterForm = ({ onEmergencyCreated }) => {
   const [form, setForm] = useState({
@@ -367,17 +368,17 @@ const EmergencyRegisterForm = ({ onEmergencyCreated }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="block text-sm font-semibold text-gray-700">
-                      Ảnh minh họa (URL)
+                      Ảnh minh họa (tùy chọn)
                     </label>
-                    <input 
-                      name="emergencyImage" 
-                      value={form.emergencyImage} 
-                      onChange={handleChange}
-                      onBlur={handleBlur}
-                      className={`w-full px-4 py-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-300 shadow-sm hover:shadow-md ${
-                        errors.emergencyImage ? 'border-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="https://example.com/image.jpg" 
+                    <ImageUpload
+                      value={form.emergencyImage}
+                      onChange={(url) => {
+                        setForm(prev => ({ ...prev, emergencyImage: url }));
+                        const fieldError = validateField('emergencyImage', url);
+                        setErrors(prev => ({ ...prev, emergencyImage: fieldError }));
+                      }}
+                      placeholder="Kéo thả ảnh vào đây hoặc click để chọn file"
+                      disabled={loading}
                     />
                     {errors.emergencyImage && (
                       <p className="text-red-600 text-sm mt-1 flex items-center">

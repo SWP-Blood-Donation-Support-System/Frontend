@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FaTint, FaUserPlus, FaExclamationTriangle, FaChartLine, FaCalendarAlt, FaMapMarkerAlt, FaSpinner, FaExclamationCircle, FaFileAlt, FaDownload, FaUsers, FaClock, FaHospital, FaSignOutAlt, FaEye, FaPlus, FaChartBar, FaBell } from 'react-icons/fa';
 import { getBloodInventory, getAllReports, isAuthenticated, getUser, logout } from '../utils/api';
 import BloodInventoryDetail from './BloodInventoryDetail';
+import Toast from '../components/Toast';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -20,6 +21,9 @@ const Dashboard = () => {
   const [addBloodForm, setAddBloodForm] = useState({ bloodType: '', volume: '', bloodDetailDate: '', note: '' });
   const [addBloodLoading, setAddBloodLoading] = useState(false);
   const [addBloodError, setAddBloodError] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('success');
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -406,7 +410,9 @@ const Dashboard = () => {
                             setShowBloodDetail(true);
                           } catch (err) {
                             console.error('Error fetching blood inventory detail:', err);
-                            alert('Có lỗi khi tải chi tiết kho máu');
+                            setToastMessage('Có lỗi khi tải chi tiết kho máu');
+                            setToastType('error');
+                            setShowToast(true);
                           }
                         }}
                         className="flex items-center px-3 py-1 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
@@ -583,6 +589,16 @@ const Dashboard = () => {
               </form>
             </div>
           </div>
+        )}
+
+        {/* Toast notification */}
+        {showToast && (
+          <Toast
+            message={toastMessage}
+            type={toastType}
+            duration={4000}
+            onClose={() => setShowToast(false)}
+          />
         )}
       </div>
     </div>
