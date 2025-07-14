@@ -6,7 +6,7 @@ import SurveyModal from '../components/SurveyModal';
 
 const Events = () => {
   const [events, setEvents] = useState([]);
-  const [registeredEventIds, setRegisteredEventIds] = useState(new Set());
+  const [registeredAppointments, setRegisteredAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -69,16 +69,28 @@ const Events = () => {
         
         // Kiểm tra cấu trúc dữ liệu từ AppointmentHistory
         if (registeredEvents && Array.isArray(registeredEvents)) {
-          const registeredIds = new Set(registeredEvents.map(appointment => {
-            console.log('Appointment item:', appointment);
-            // Lấy eventId từ appointment
-            return appointment.eventId || appointment.event?.eventId;
-          }).filter(id => id)); // Lọc bỏ các giá trị null/undefined
-          console.log('Registered event IDs:', registeredIds);
-          setRegisteredEventIds(registeredIds);
+          // Lưu trữ toàn bộ thông tin appointment
+          setRegisteredAppointments(registeredEvents);
+          
+          // Chỉ lấy eventId của những appointment chưa bị hủy
+          const validRegisteredIds = new Set(registeredEvents
+            .filter(appointment => {
+              const status = appointment.appointmentStatus?.toLowerCase();
+              return status !== 'đã hủy' && status !== 'hủy';
+            })
+            .map(appointment => {
+              console.log('Appointment item:', appointment);
+              // Lấy eventId từ appointment
+              return appointment.eventId || appointment.event?.eventId;
+            })
+            .filter(id => id)); // Lọc bỏ các giá trị null/undefined
+          
+          console.log('Valid registered event IDs:', validRegisteredIds);
+          // setRegisteredEventIds(validRegisteredIds); // This line is removed
         } else {
           console.log('No registered events or invalid data structure');
-          setRegisteredEventIds(new Set());
+          setRegisteredAppointments([]);
+          // setRegisteredEventIds(new Set()); // This line is removed
         }
       }
     } catch (err) {
@@ -241,7 +253,6 @@ const Events = () => {
           setSuccessMessage(`Đã đăng ký thành công cho sự kiện "${pendingRegister.eventTitle}"!`);
         }
         setShowSuccess(true);
-        setRegisteredEventIds(prev => new Set(prev).add(pendingRegister.eventId));
         setPendingRegister(null); // Xóa pendingRegister khi thành công
         
         // Refresh danh sách sự kiện đã đăng ký từ server
@@ -304,7 +315,14 @@ const Events = () => {
   };
 
   const isEventRegistered = (eventId) => {
-    return registeredEventIds.has(eventId);
+    // Kiểm tra xem có appointment nào cho event này mà chưa bị hủy không
+    const hasValidAppointment = registeredAppointments.some(appointment => {
+      const appointmentEventId = appointment.eventId || appointment.event?.eventId;
+      const status = appointment.appointmentStatus?.toLowerCase();
+      return appointmentEventId === eventId && status !== 'đã hủy' && status !== 'hủy';
+    });
+    
+    return hasValidAppointment;
   };
 
   // Filter events based on search term
