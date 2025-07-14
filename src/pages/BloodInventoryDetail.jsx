@@ -193,14 +193,14 @@ const BloodInventoryDetail = ({ bloodInventory, onClose, getHospitalName, onRefr
                           </div>
                         </div>
                         <div className="flex items-center space-x-4">
-                          <div className="text-right">
-                            <div className="font-bold text-lg text-gray-900">
-                              {detail.volume} ml
-                            </div>
-                            <div className="flex items-center space-x-1 text-sm text-gray-600">
-                              <FaCalendarAlt className="text-xs" />
-                              <span>{new Date(detail.bloodDetailDate).toLocaleDateString('vi-VN')}</span>
-                            </div>
+                        <div className="text-right">
+                          <div className="font-bold text-lg text-gray-900">
+                            {detail.volume} ml
+                          </div>
+                          <div className="flex items-center space-x-1 text-sm text-gray-600">
+                            <FaCalendarAlt className="text-xs" />
+                            <span>{new Date(detail.bloodDetailDate).toLocaleDateString('vi-VN')}</span>
+                          </div>
                           </div>
                           {detail.bloodDetailId && detail.bloodDetailStatus !== 'Đã sử dụng' && detail.bloodDetailStatus !== 'Hết hạn' && (
                             <button

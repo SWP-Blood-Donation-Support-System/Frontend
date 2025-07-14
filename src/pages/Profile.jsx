@@ -32,9 +32,9 @@ const Profile = () => {
         if (localUser) {
           setUserData(localUser);
           console.log('Using user data from localStorage:', localUser);
-        }
+    }
       } finally {
-        setLoading(false);
+    setLoading(false);
       }
     };
 
@@ -220,7 +220,7 @@ const Profile = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Ngày sinh <span className="text-red-500">*</span>
                 </label>
-                <input
+                  <input
                   type="date"
                   defaultValue={userData.dateOfBirth || ''}
                   {...register('dateOfBirth', { required: 'Vui lòng nhập ngày sinh' })}
@@ -229,7 +229,7 @@ const Profile = () => {
                 {errors.dateOfBirth && (
                   <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth.message}</p>
                 )}
-              </div>
+                </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -406,11 +406,11 @@ const Profile = () => {
 
             <div className="flex items-center space-x-3">
               <FaPhone className="text-gray-400" />
-              <div>
+                <div>
                 <p className="text-sm text-gray-500">Số điện thoại</p>
                 <p className="font-medium">{userData.phoneNumber || userData.phone || 'Chưa cập nhật'}</p>
               </div>
-            </div>
+                </div>
 
             <div className="flex items-center space-x-3">
               <FaMapMarkerAlt className="text-gray-400" />
@@ -422,7 +422,7 @@ const Profile = () => {
 
             <div className="flex items-center space-x-3">
               <FaTint className="text-gray-400" />
-              <div>
+                <div>
                 <p className="text-sm text-gray-500">Nhóm máu</p>
                 <p className="font-medium">{userData.bloodType || 'Chưa cập nhật'}</p>
               </div>
@@ -457,7 +457,7 @@ const Profile = () => {
             <p className="text-gray-600">Chưa có báo cáo nào</p>
           </div>
         ) : (
-          <div className="space-y-4">
+        <div className="space-y-4">
             {userReports.map((report) => {
               const isDonationReview = report.reportType === 'DonationReview';
               const reviewData = isDonationReview ? parseDonationReview(report.reportContent) : null;
@@ -494,7 +494,7 @@ const Profile = () => {
                           <FaCalendarAlt className="mr-1" />
                           <span>{new Date(report.reportDate).toLocaleDateString('vi-VN')}</span>
                         </div>
-                      </div>
+                </div>
 
                       {/* Content */}
                       <div className="bg-gray-50 rounded-lg p-3">
@@ -504,13 +504,13 @@ const Profile = () => {
                             : report.reportContent
                           }
                         </p>
-                      </div>
-                    </div>
-                  </div>
                 </div>
+              </div>
+              </div>
+            </div>
               );
             })}
-          </div>
+        </div>
         )}
       </div>
 

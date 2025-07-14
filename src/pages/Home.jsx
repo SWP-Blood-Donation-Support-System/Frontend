@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaHeartbeat, FaSearch, FaUserPlus, FaBell, FaUsers, FaShieldAlt, FaClock, FaMapMarkerAlt, FaNewspaper, FaUser, FaCalendarAlt, FaArrowRight, FaTimes, FaSpinner } from 'react-icons/fa';
-import { getAllBlogPosts, getBlogPostById } from '../utils/api';
+import { getAllBlogPosts, getBlogPostById, isAuthenticated } from '../utils/api';
 
 const Home = () => {
   const [blogs, setBlogs] = useState([]);
@@ -11,6 +11,7 @@ const Home = () => {
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [blogDetailLoading, setBlogDetailLoading] = useState(false);
   const [showAllBlogs, setShowAllBlogs] = useState(false);
+  const loggedIn = isAuthenticated();
 
   useEffect(() => {
     fetchBlogs();
@@ -118,14 +119,15 @@ const Home = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link 
-                to="/register" 
-                className="inline-flex items-center px-6 py-3 bg-white text-red-600 font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-              >
-                <FaUserPlus className="mr-2" />
-                Đăng ký hiến máu
-              </Link>
-              
+              {!loggedIn && (
+                <Link 
+                  to="/register" 
+                  className="inline-flex items-center px-6 py-3 bg-white text-red-600 font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                >
+                  <FaUserPlus className="mr-2" />
+                  Đăng ký hiến máu
+                </Link>
+              )}
               <Link 
                 to="/blood-search" 
                 className="inline-flex items-center px-6 py-3 border-2 border-white text-white font-semibold rounded-lg hover:bg-white hover:text-red-600 transition-all duration-300 hover:-translate-y-1"
@@ -301,13 +303,15 @@ const Home = () => {
             Mỗi hành động nhỏ của bạn có thể tạo nên sự khác biệt lớn.
           </p>
           
-          <Link 
-            to="/register" 
-            className="inline-flex items-center px-8 py-4 bg-white text-red-600 font-bold text-lg rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:bg-gray-50"
-          >
-            <FaUserPlus className="mr-3 text-xl" />
-            Đăng ký ngay
-          </Link>
+          {!loggedIn && (
+            <Link 
+              to="/register" 
+              className="inline-flex items-center px-8 py-4 bg-white text-red-600 font-bold text-lg rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:bg-gray-50"
+            >
+              <FaUserPlus className="mr-3 text-xl" />
+              Đăng ký ngay
+            </Link>
+          )}
         </div>
       </section>
 

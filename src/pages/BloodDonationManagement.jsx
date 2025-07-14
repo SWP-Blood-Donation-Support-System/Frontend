@@ -10,7 +10,7 @@ const BloodDonationManagement = () => {
   const [participants, setParticipants] = useState([]);
   const [loading, setLoading] = useState(true);
   const [participantsLoading, setParticipantsLoading] = useState(false);
-  const [error, setError] = useState('');
+
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [recordingDonation, setRecordingDonation] = useState(new Set());
@@ -40,9 +40,8 @@ const BloodDonationManagement = () => {
       setLoading(true);
       const eventsData = await getEvents();
       setEvents(eventsData);
-    } catch (err) {
-      setError('Không thể tải danh sách sự kiện. Vui lòng thử lại.');
-      console.error('Error fetching events:', err);
+    } catch {
+      // Silent error handling
     } finally {
       setLoading(false);
     }
@@ -52,7 +51,6 @@ const BloodDonationManagement = () => {
     try {
       setSelectedEvent(event);
       setParticipantsLoading(true);
-      setError('');
       
       const participantsData = await getRegisteredParticipantsByEventId(event.eventId);
       
@@ -61,8 +59,8 @@ const BloodDonationManagement = () => {
       } else {
         setParticipants([]);
       }
-    } catch (err) {
-      setError(err.message || 'Không thể tải danh sách người tham gia. Vui lòng thử lại.');
+    } catch {
+      setParticipants([]);
     } finally {
       setParticipantsLoading(false);
     }
@@ -81,7 +79,6 @@ const BloodDonationManagement = () => {
     try {
       const bloodTypeToUse = selectedParticipant.bloodType ? getBloodTypeName(selectedParticipant.bloodType) : donationForm.bloodType;
       if (!bloodTypeToUse || !donationForm.volume) {
-        setError('Vui lòng nhập đầy đủ thông tin nhóm máu và thể tích hiến máu.');
         return;
       }
       setRecordingDonation(prev => new Set(prev).add(selectedParticipant.appointmentId));
@@ -101,9 +98,8 @@ const BloodDonationManagement = () => {
         const participantsData = await getRegisteredParticipantsByEventId(selectedEvent.eventId);
         setParticipants(participantsData);
       }
-    } catch (err) {
-      setError(err.message || 'Không thể ghi nhận hiến máu. Vui lòng thử lại.');
-      console.error('Error recording donation:', err);
+    } catch {
+      // Silent error handling
     } finally {
       setRecordingDonation(prev => {
         const newSet = new Set(prev);
@@ -226,21 +222,7 @@ const BloodDonationManagement = () => {
           </p>
         </div>
 
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md mb-8 animate-shake">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
+
 
         {!selectedEvent ? (
           /* Events List */
@@ -248,40 +230,40 @@ const BloodDonationManagement = () => {
             {events.map((event) => (
               <div
                 key={event.eventId}
-                className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer"
+                className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer flex flex-col h-full"
                 onClick={() => handleEventSelect(event)}
               >
                 {/* Event Header */}
                 <div className="bg-gradient-to-r from-red-600 to-red-400 p-6 text-white">
-                  <h3 className="text-xl font-bold mb-2">{event.eventTitle}</h3>
-                  <p className="text-red-100 text-sm">{event.eventContent}</p>
+                  <h3 className="text-xl font-bold mb-2 line-clamp-2">{event.eventTitle}</h3>
+                  <p className="text-red-100 text-sm line-clamp-3">{event.eventContent}</p>
                 </div>
 
                 {/* Event Details */}
-                <div className="p-6">
-                  <div className="space-y-4">
+                <div className="p-6 flex-1 flex flex-col">
+                  <div className="space-y-4 flex-1">
                     <div className="flex items-center text-gray-600">
-                      <FaCalendarAlt className="text-red-500 mr-3" />
+                      <FaCalendarAlt className="text-red-500 mr-3 flex-shrink-0" />
                       <span className="font-medium">{formatDate(event.eventDate)}</span>
                     </div>
 
                     <div className="flex items-center text-gray-600">
-                      <FaClock className="text-red-500 mr-3" />
+                      <FaClock className="text-red-500 mr-3 flex-shrink-0" />
                       <span>{formatTime(event.eventTime)}</span>
                     </div>
 
                     <div className="flex items-start text-gray-600">
                       <FaMapMarkerAlt className="text-red-500 mr-3 mt-1 flex-shrink-0" />
-                      <span>{event.location}</span>
+                      <span className="line-clamp-2">{event.location}</span>
                     </div>
 
                     <div className="flex items-center text-gray-600">
-                      <FaUsers className="text-red-500 mr-3" />
+                      <FaUsers className="text-red-500 mr-3 flex-shrink-0" />
                       <span>Tối đa {event.maxParticipants} người tham gia</span>
                     </div>
 
                     <div className="flex items-center text-gray-600">
-                      <FaTint className="text-red-500 mr-3" />
+                      <FaTint className="text-red-500 mr-3 flex-shrink-0" />
                       <span>
                         {event.bloodTypeRequired 
                           ? `Nhóm máu: ${event.bloodTypeRequired}`
@@ -309,7 +291,6 @@ const BloodDonationManagement = () => {
               onClick={() => {
                 setSelectedEvent(null);
                 setParticipants([]);
-                setError('');
               }}
               className="mb-6 flex items-center text-red-600 hover:text-red-700 font-medium"
             >
@@ -353,17 +334,18 @@ const BloodDonationManagement = () => {
                   <p className="text-gray-600">Chưa có người nào đăng ký tham gia sự kiện này.</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
                   {participants.map((participant) => (
                     <div
                       key={participant.appointmentId}
-                      className="bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between border border-gray-100 hover:shadow-2xl transition-all duration-200"
+                      className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden group flex flex-col h-full"
                     >
-                      <div className="mb-4">
+                      {/* Card Header */}
+                      <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 border-b border-gray-100">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="text-lg font-bold text-gray-900 truncate max-w-[70%]">
+                          <h4 className="text-lg font-bold text-gray-900 truncate max-w-[70%] group-hover:text-red-600 transition-colors">
                             {participant.fullName || participant.username}
-                          </span>
+                          </h4>
                           <span className={`text-xs font-semibold px-3 py-1 rounded-full ${
                             getBloodTypeName(participant.bloodType) === 'A+' || getBloodTypeName(participant.bloodType) === 'A-' ? 'bg-red-100 text-red-800' :
                             getBloodTypeName(participant.bloodType) === 'B+' || getBloodTypeName(participant.bloodType) === 'B-' ? 'bg-blue-100 text-blue-800' :
@@ -374,29 +356,36 @@ const BloodDonationManagement = () => {
                             {participant.bloodType ? getBloodTypeName(participant.bloodType) : 'Chưa cập nhật'}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-500 mb-2 truncate">
+                        <div className="text-sm text-gray-600 truncate">
                           {participant.phoneNumber || participant.phone}
                         </div>
-                        <div className="mb-2">
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="p-4 flex-1 flex flex-col">
+                        <div className="mb-4">
                           {getStatusBadge(participant.appointmentStatus)}
                         </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-auto">
-                        {/* Nút khảo sát */}
-                        <button
-                          onClick={() => openSurveyAnswers(participant.appointmentId)}
-                          className="flex-1 min-w-[110px] inline-flex items-center justify-center px-3 py-1 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition"
-                          title="Xem khảo sát"
-                        >
-                          <FaEye className="mr-1" /> Khảo sát
-                        </button>
-                        {/* Nút check-in */}
-                        {participant.appointmentStatus === 'Đã đủ điều kiện' && (
+
+                        {/* Action Buttons - Always take up the same space */}
+                        <div className="space-y-2 mt-auto">
+                          {/* Nút khảo sát - Always visible */}
                           <button
-                            onClick={async () => {
-                              setCheckingIn(prev => new Set(prev).add(participant.appointmentId));
-                              setError('');
-                              try {
+                            onClick={() => openSurveyAnswers(participant.appointmentId)}
+                            className="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all duration-200"
+                            title="Xem khảo sát"
+                          >
+                            <FaEye className="mr-2" /> Xem khảo sát
+                          </button>
+
+                          {/* Conditional buttons with consistent spacing */}
+                          <div className="space-y-2">
+                            {/* Nút check-in */}
+                            {participant.appointmentStatus === 'Đã đủ điều kiện' ? (
+                              <button
+                                onClick={async () => {
+                                  setCheckingIn(prev => new Set(prev).add(participant.appointmentId));
+                                  try {
                                 await checkinParticipant(participant.appointmentId);
                                 setSuccessMessage('Check-in thành công!');
                                 setShowSuccess(true);
@@ -404,65 +393,66 @@ const BloodDonationManagement = () => {
                                   const participantsData = await getRegisteredParticipantsByEventId(selectedEvent.eventId);
                                   setParticipants(participantsData);
                                 }
-                              } catch (err) {
-                                setError(err.message || 'Không thể check-in. Vui lòng thử lại.');
+                              } catch {
+                                // Silent error handling
                               } finally {
-                                setCheckingIn(prev => {
-                                  const newSet = new Set(prev);
-                                  newSet.delete(participant.appointmentId);
-                                  return newSet;
-                                });
-                              }
-                            }}
-                            disabled={checkingIn.has(participant.appointmentId)}
-                            className="flex-1 min-w-[110px] inline-flex items-center justify-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                            title="Check-in"
-                          >
-                            {checkingIn.has(participant.appointmentId) ? (
-                              <FaSpinner className="animate-spin mr-1" />
+                                    setCheckingIn(prev => {
+                                      const newSet = new Set(prev);
+                                      newSet.delete(participant.appointmentId);
+                                      return newSet;
+                                    });
+                                  }
+                                }}
+                                disabled={checkingIn.has(participant.appointmentId)}
+                                className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                                title="Check-in"
+                              >
+                                {checkingIn.has(participant.appointmentId) ? (
+                                  <FaSpinner className="animate-spin mr-2" />
+                                ) : (
+                                  <FaUserCheck className="mr-2" />
+                                )}
+                                Check-in
+                              </button>
+                            ) : participant.appointmentStatus === 'Đã đến' ? (
+                              <div className="space-y-2">
+                                <button
+                                  onClick={() => handleRecordDonation(participant)}
+                                  disabled={recordingDonation.has(participant.appointmentId)}
+                                  className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                                  title="Ghi nhận hiến máu"
+                                >
+                                  {recordingDonation.has(participant.appointmentId) ? (
+                                    <FaSpinner className="animate-spin mr-2" />
+                                  ) : (
+                                    <FaTint className="mr-2" />
+                                  )}
+                                  Ghi nhận hiến máu
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setUpdateStatusParticipant(participant);
+                                    setShowUpdateStatusModal(true);
+                                    setReasonCode('');
+                                    setCustomNote('');
+                                  }}
+                                  className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-yellow-600 hover:bg-yellow-700 transition-all duration-200"
+                                  title="Cập nhật trạng thái không thể hiến máu"
+                                >
+                                  <FaEdit className="mr-2" />
+                                  Cập nhật trạng thái
+                                </button>
+                              </div>
+                            ) : participant.appointmentStatus === 'Donated' ? (
+                              <div className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-green-800 bg-green-100">
+                                <FaCheckCircle className="mr-2" /> Hoàn thành hiến máu
+                              </div>
                             ) : (
-                              <FaUserCheck className="mr-1" />
+                              // Placeholder div to maintain consistent height
+                              <div className="h-10"></div>
                             )}
-                            Check-in
-                          </button>
-                        )}
-                        {/* Nút ghi nhận hiến máu và cập nhật trạng thái */}
-                        {participant.appointmentStatus === 'Đã đến' && (
-                          <>
-                            <button
-                              onClick={() => handleRecordDonation(participant)}
-                              disabled={recordingDonation.has(participant.appointmentId)}
-                              className="flex-1 min-w-[110px] inline-flex items-center justify-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                              title="Ghi nhận hiến máu"
-                            >
-                              {recordingDonation.has(participant.appointmentId) ? (
-                                <FaSpinner className="animate-spin mr-1" />
-                              ) : (
-                                <FaTint className="mr-1" />
-                              )}
-                              Ghi nhận
-                            </button>
-                            <button
-                              onClick={() => {
-                                setUpdateStatusParticipant(participant);
-                                setShowUpdateStatusModal(true);
-                                setReasonCode('');
-                                setCustomNote('');
-                              }}
-                              className="flex-1 min-w-[110px] inline-flex items-center justify-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700 transition"
-                              title="Cập nhật trạng thái không thể hiến máu"
-                            >
-                              <FaEdit className="mr-1" />
-                              Cập nhật
-                            </button>
-                          </>
-                        )}
-                        {/* Badge hoàn thành */}
-                        {participant.appointmentStatus === 'Donated' && (
-                          <span className="flex-1 min-w-[110px] inline-flex items-center justify-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-green-800 bg-green-100">
-                            <FaCheckCircle className="mr-1" /> Hoàn thành
-                          </span>
-                        )}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -657,11 +647,9 @@ const BloodDonationManagement = () => {
               <button
                 onClick={async () => {
                   if (!reasonCode) {
-                    setError('Vui lòng chọn lý do không thể hiến máu.');
                     return;
                   }
                   setUpdatingStatus(true);
-                  setError('');
                   try {
                     await updateNote(updateStatusParticipant.appointmentId, reasonCode, customNote);
                     setSuccessMessage('Cập nhật trạng thái thành công!');
@@ -675,8 +663,8 @@ const BloodDonationManagement = () => {
                       const participantsData = await getRegisteredParticipantsByEventId(selectedEvent.eventId);
                       setParticipants(participantsData);
                     }
-                  } catch (err) {
-                    setError(err.message || 'Không thể cập nhật trạng thái. Vui lòng thử lại.');
+                  } catch {
+                    // Silent error
                   } finally {
                     setUpdatingStatus(false);
                   }

@@ -755,13 +755,13 @@ const AppointmentHistory = () => {
 
                       {appointment.appointmentStatus === 'Đã hiến' ? (
                         <>
-                          <button
-                            onClick={() => handleShowCertificate(appointment.appointmentId || appointment.id)}
-                            className="p-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 rounded-lg transition-colors duration-200"
-                            title="Xem chứng nhận hiến máu"
-                          >
-                            <FaCertificate className="text-sm" />
-                          </button>
+                        <button
+                          onClick={() => handleShowCertificate(appointment.appointmentId || appointment.id)}
+                          className="p-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 rounded-lg transition-colors duration-200"
+                          title="Xem chứng nhận hiến máu"
+                        >
+                          <FaCertificate className="text-sm" />
+                        </button>
                           <button
                             onClick={() => openReportModal(appointment)}
                             className="p-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors duration-200"
