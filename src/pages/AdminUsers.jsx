@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAuthToken } from '../utils/api';
-import { FaUser, FaEnvelope, FaUserShield, FaUserTag, FaTint, FaCheckCircle, FaTimesCircle, FaSearch, FaChevronLeft, FaChevronRight, FaTrash, FaEdit, FaLock, FaUnlock, FaPlus } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaUserShield, FaUserTag, FaTint, FaCheckCircle, FaTimesCircle, FaSearch, FaChevronLeft, FaChevronRight, FaTrash, FaEdit, FaPlus } from 'react-icons/fa';
 import Toast from '../components/Toast';
 
 const API_URL = 'https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/admin/users';
@@ -12,7 +12,8 @@ const AdminUsers = () => {
     role: '',
     fullname: '',
     bloodtype: '',
-    status: '',
+    userStatus: '',
+    profileStatus: '',
     page: 1,
     pageSize: 10,
     sortOrder: 'asc',
@@ -25,8 +26,6 @@ const AdminUsers = () => {
   const [editingUser, setEditingUser] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [detailUser, setDetailUser] = useState(null);
-  const [statusUser, setStatusUser] = useState(null);
-  const [statusReason, setStatusReason] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
     username: '',
@@ -367,6 +366,7 @@ const AdminUsers = () => {
       gender: user.gender || '',
       phone: user.phone || '',
       address: user.address || '',
+      userStatus: user.userStatus || '',
       profileStatus: user.profileStatus || '',
       bloodType: user.bloodType || user.bloodtype || '',
     });
@@ -389,6 +389,7 @@ const AdminUsers = () => {
         gender: editForm.gender,
         phone: editForm.phone,
         address: editForm.address,
+        userStatus: editForm.userStatus,
         profileStatus: editForm.profileStatus,
         bloodType: editForm.bloodType,
       };
@@ -412,34 +413,7 @@ const AdminUsers = () => {
     }
   };
 
-  // Đổi trạng thái user
-  const handleChangeStatus = (user, newStatus) => {
-    setStatusUser({ user, newStatus });
-    setStatusReason('');
-  };
 
-  const handleStatusSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(`${API_URL}/status`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`,
-        },
-        body: JSON.stringify({ username: statusUser.user.username, newStatus: statusUser.newStatus, reason: statusReason }),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || 'Lỗi cập nhật trạng thái');
-      }
-      setToast({ message: 'Cập nhật trạng thái thành công!', type: 'success' });
-      setStatusUser(null);
-      fetchUsers(filters);
-    } catch (err) {
-      setToast({ message: err.message || 'Lỗi cập nhật trạng thái', type: 'error' });
-    }
-  };
 
   return (
     <div className="w-full p-4 sm:p-6 bg-white rounded-xl shadow-lg mt-8">
@@ -477,7 +451,20 @@ const AdminUsers = () => {
         </div>
         <div className="relative">
           <FaCheckCircle className="absolute left-3 top-3 text-gray-400" />
-          <input name="status" value={filters.status} onChange={handleInputChange} placeholder="Trạng thái" className="input pl-10" />
+          <select name="userStatus" value={filters.userStatus} onChange={handleInputChange} className="input pl-10">
+            <option value="">Tất cả trạng thái tài khoản</option>
+            <option value="Active">Active</option>
+            <option value="Inactive">Inactive</option>
+          </select>
+        </div>
+        <div className="relative">
+          <FaCheckCircle className="absolute left-3 top-3 text-gray-400" />
+          <select name="profileStatus" value={filters.profileStatus} onChange={handleInputChange} className="input pl-10">
+            <option value="">Tất cả trạng thái hồ sơ</option>
+            <option value="Sẵn sàng hiến máu">Sẵn sàng hiến máu</option>
+            <option value="Đang nghỉ ngơi">Đang nghỉ ngơi</option>
+            <option value="Không sẵn sàng">Không sẵn sàng</option>
+          </select>
         </div>
         <button type="submit" className="btn btn-primary flex items-center gap-2"><FaSearch /> Tìm kiếm</button>
       </form>
@@ -486,7 +473,7 @@ const AdminUsers = () => {
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
       <div className="overflow-x-auto rounded-lg shadow">
-        <table className="min-w-[1200px] w-full divide-y divide-gray-200">
+        <table className="min-w-[1400px] w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
             <tr>
               <th className="px-4 py-3 text-left font-semibold text-gray-700 cursor-pointer" onClick={handleSort}>
@@ -495,15 +482,16 @@ const AdminUsers = () => {
               <th className="px-4 py-3 text-left font-semibold text-gray-700">Email</th>
               <th className="px-4 py-3 text-left font-semibold text-gray-700">Họ tên</th>
               <th className="px-4 py-3 text-left font-semibold text-gray-700">Vai trò</th>
-              <th className="px-4 py-3 text-left font-semibold text-gray-700">Trạng thái</th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">Trạng thái tài khoản</th>
+              <th className="px-4 py-3 text-left font-semibold text-gray-700">Trạng thái hồ sơ</th>
               <th className="px-4 py-3 text-center font-semibold text-gray-700">Action</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-100">
             {loading ? (
-              <tr><td colSpan={6} className="text-center py-8"><span className="animate-spin inline-block mr-2"><FaUser /></span>Đang tải...</td></tr>
+              <tr><td colSpan={7} className="text-center py-8"><span className="animate-spin inline-block mr-2"><FaUser /></span>Đang tải...</td></tr>
             ) : users.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-8">Không có kết quả</td></tr>
+              <tr><td colSpan={7} className="text-center py-8">Không có kết quả</td></tr>
             ) : (
               users.map((u) => (
                 <tr key={u.username} className="hover:bg-gray-50 transition">
@@ -514,10 +502,22 @@ const AdminUsers = () => {
                     <span className="inline-block px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-700">{u.role}</span>
                   </td>
                   <td className="px-4 py-2">
+                    {u.userStatus ? (
+                      <span className={`inline-block px-2 py-1 rounded text-xs font-semibold
+                        ${u.userStatus === 'Active' ? 'bg-green-100 text-green-700' :
+                          u.userStatus === 'Inactive' ? 'bg-red-100 text-red-700' :
+                          'bg-gray-100 text-gray-700'}`}
+                      >
+                        {u.userStatus}
+                      </span>
+                    ) : <span className="text-gray-400">-</span>}
+                  </td>
+                  <td className="px-4 py-2">
                     {u.profileStatus ? (
                       <span className={`inline-block px-2 py-1 rounded text-xs font-semibold
-                        ${u.profileStatus === 'Active' ? 'bg-green-100 text-green-700' :
+                        ${u.profileStatus === 'Sẵn sàng hiến máu' ? 'bg-green-100 text-green-700' :
                           u.profileStatus === 'Đang nghỉ ngơi' ? 'bg-yellow-100 text-yellow-700' :
+                          u.profileStatus === 'Không sẵn sàng' ? 'bg-red-100 text-red-700' :
                           'bg-gray-100 text-gray-700'}`}
                       >
                         {u.profileStatus}
@@ -529,16 +529,6 @@ const AdminUsers = () => {
                       <button title="Xem chi tiết" onClick={() => setDetailUser(u)} className="text-green-600 hover:text-green-800 p-2 rounded-full transition border border-green-200 hover:shadow-lg" >
                         <FaUser className="w-5 h-5" />
                       </button>
-                      {(u.status?.toLowerCase() === 'active') && (
-                        <button title="Khóa tài khoản" onClick={() => handleChangeStatus(u, 'Inactive')} className="text-yellow-600 hover:text-yellow-800 p-2 rounded-full transition border border-yellow-200 hover:shadow-lg bg-yellow-50" >
-                          <FaLock className="w-5 h-5" />
-                        </button>
-                      )}
-                      {(u.status?.toLowerCase() === 'inactive') && (
-                        <button title="Mở khóa tài khoản" onClick={() => handleChangeStatus(u, 'Active')} className="text-blue-600 hover:text-blue-800 p-2 rounded-full transition border border-blue-200 hover:shadow-lg bg-blue-50" >
-                          <FaUnlock className="w-5 h-5" />
-                        </button>
-                      )}
                       <button title="Sửa user" onClick={() => handleEditUser(u)} className="text-blue-600 hover:text-blue-800 p-2 rounded-full transition border border-blue-200 hover:shadow-lg" >
                         <FaEdit className="w-5 h-5" />
                       </button>
@@ -785,11 +775,19 @@ const AdminUsers = () => {
                   <input name="address" value={editForm.address} onChange={handleEditFormChange} className="input w-full" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Trạng thái hồ sơ</label>
-                  <select name="profileStatus" value={editForm.profileStatus} onChange={handleEditFormChange} className="input w-full">
+                  <label className="block text-sm font-medium mb-1">Trạng thái tài khoản</label>
+                  <select name="userStatus" value={editForm.userStatus} onChange={handleEditFormChange} className="input w-full">
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
                     <option value="Deleted">Deleted</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Trạng thái hồ sơ</label>
+                  <select name="profileStatus" value={editForm.profileStatus} onChange={handleEditFormChange} className="input w-full">
+                    <option value="Sẵn sàng hiến máu">Sẵn sàng hiến máu</option>
+                    <option value="Đang nghỉ ngơi">Đang nghỉ ngơi</option>
+                    <option value="Không sẵn sàng">Không sẵn sàng</option>
                   </select>
                 </div>
                 <div>
@@ -816,13 +814,13 @@ const AdminUsers = () => {
               <div><b>Email:</b> {detailUser.email}</div>
               <div><b>Họ tên:</b> {detailUser.fullName || detailUser.fullname}</div>
               <div><b>Vai trò:</b> {detailUser.role}</div>
+              <div><b>Trạng thái tài khoản:</b> {detailUser.userStatus || '-'}</div>
+              <div><b>Trạng thái hồ sơ:</b> {detailUser.profileStatus || '-'}</div>
               <div><b>Ngày sinh:</b> {detailUser.dateOfBirth ? new Date(detailUser.dateOfBirth).toLocaleDateString('vi-VN') : '-'}</div>
               <div><b>Giới tính:</b> {detailUser.gender || '-'}</div>
               <div><b>Số điện thoại:</b> {detailUser.phone || '-'}</div>
               <div><b>Địa chỉ:</b> {detailUser.address || '-'}</div>
-              <div><b>Trạng thái tài khoản:</b> {detailUser.status || '-'}</div>
               <div><b>Nhóm máu:</b> {detailUser.bloodType || detailUser.bloodtype || '-'}</div>
-              <div><b>Trạng thái hồ sơ:</b> {detailUser.profileStatus || '-'}</div>
               <div><b>Tổng lịch hẹn:</b> {detailUser.totalAppointments ?? 0}</div>
               <div><b>Tổng hiến máu:</b> {detailUser.totalDonations ?? 0}</div>
               <div><b>Lần đăng nhập cuối:</b> {detailUser.lastLoginDate ? new Date(detailUser.lastLoginDate).toLocaleString('vi-VN') : '-'}</div>
@@ -831,34 +829,6 @@ const AdminUsers = () => {
             <div className="flex justify-end mt-6">
               <button className="btn" onClick={() => setDetailUser(null)}>Đóng</button>
             </div>
-          </div>
-        </div>
-      )}
-      {/* Modal đổi trạng thái user */}
-      {statusUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md relative">
-            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl" onClick={() => setStatusUser(null)}>&times;</button>
-            <div className="flex flex-col items-center mb-4">
-              {statusUser.newStatus === 'Inactive' ? (
-                <FaLock className="text-yellow-500 w-12 h-12 mb-2" />
-              ) : (
-                <FaUnlock className="text-blue-500 w-12 h-12 mb-2" />
-              )}
-              <h3 className="text-xl font-bold text-center mb-2 text-yellow-700">
-                {statusUser.newStatus === 'Inactive' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
-              </h3>
-            </div>
-            <form onSubmit={handleStatusSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Lý do <span className="text-red-500">*</span></label>
-                <textarea className="input w-full border border-gray-300 rounded" value={statusReason} onChange={e => setStatusReason(e.target.value)} required rows={3} placeholder="Nhập lý do..." />
-              </div>
-              <div className="flex justify-end gap-2 mt-4">
-                <button type="button" className="btn bg-gray-100 hover:bg-gray-200 text-gray-700" onClick={() => setStatusUser(null)}>Hủy</button>
-                <button type="submit" className="btn bg-yellow-500 hover:bg-yellow-600 text-white font-semibold shadow">Xác nhận</button>
-              </div>
-            </form>
           </div>
         </div>
       )}

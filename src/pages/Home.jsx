@@ -119,7 +119,7 @@ const Home = () => {
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Link 
-                to="/donor-registration" 
+                to="/register" 
                 className="inline-flex items-center px-6 py-3 bg-white text-red-600 font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
                 <FaUserPlus className="mr-2" />
@@ -285,20 +285,27 @@ const Home = () => {
       </section>
 
       {/* Call to Action */}
-      <section className="bg-gradient-to-r from-red-500 to-red-700 text-white py-16">
+      <section className="bg-gradient-to-r from-red-500 to-red-700 text-white py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Sẵn sàng cứu người?
-          </h2>
-          <p className="text-lg mb-8 max-w-2xl mx-auto leading-relaxed text-gray-100">
+          <div className="mb-8">
+            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <FaHeartbeat className="text-white text-2xl" />
+            </div>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-6">
+              Sẵn sàng cứu người?
+            </h2>
+          </div>
+          
+          <p className="text-lg md:text-xl mb-10 max-w-3xl mx-auto leading-relaxed text-gray-100">
             Hãy đăng ký ngay hôm nay để trở thành một phần của cộng đồng hiến máu nhân đạo. 
             Mỗi hành động nhỏ của bạn có thể tạo nên sự khác biệt lớn.
           </p>
+          
           <Link 
-            to="/donor-registration" 
-            className="inline-flex items-center px-8 py-3 bg-white text-red-600 font-bold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+            to="/register" 
+            className="inline-flex items-center px-8 py-4 bg-white text-red-600 font-bold text-lg rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 hover:bg-gray-50"
           >
-            <FaUserPlus className="mr-2" />
+            <FaUserPlus className="mr-3 text-xl" />
             Đăng ký ngay
           </Link>
         </div>

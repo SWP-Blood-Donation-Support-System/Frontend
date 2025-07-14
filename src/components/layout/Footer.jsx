@@ -6,7 +6,7 @@ const Footer = () => {
 
   const footerLinks = [
     { name: 'Nhóm máu', path: '/blood-types' },
-    { name: 'Đăng ký hiến máu', path: '/donor-registration' },
+    { name: 'Đăng ký hiến máu', path: '/register' },
     { name: 'Tìm kiếm máu', path: '/blood-search' },
     { name: 'Cấp cứu', path: '/emergency' },
     { name: 'Về chúng tôi', path: '/about' },

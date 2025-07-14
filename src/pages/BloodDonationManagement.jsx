@@ -279,6 +279,16 @@ const BloodDonationManagement = () => {
                       <FaUsers className="text-red-500 mr-3" />
                       <span>Tối đa {event.maxParticipants} người tham gia</span>
                     </div>
+
+                    <div className="flex items-center text-gray-600">
+                      <FaTint className="text-red-500 mr-3" />
+                      <span>
+                        {event.bloodTypeRequired 
+                          ? `Nhóm máu: ${event.bloodTypeRequired}`
+                          : 'Tất cả nhóm máu'
+                        }
+                      </span>
+                    </div>
                   </div>
 
                   <div className="mt-6">

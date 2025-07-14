@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaPlus, FaEdit, FaTrash, FaSpinner, FaSearch, FaFilter, FaExclamationTriangle, FaCheck, FaHospital, FaChevronDown } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaPlus, FaEdit, FaTrash, FaSpinner, FaSearch, FaFilter, FaExclamationTriangle, FaCheck, FaHospital, FaChevronDown, FaTint } from 'react-icons/fa';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '../utils/api';
 import Toast from '../components/Toast';
 
@@ -25,7 +25,8 @@ const EventsManagement = () => {
     eventTitle: '',
     eventContent: '',
     location: '',
-    maxParticipants: ''
+    maxParticipants: '',
+    bloodTypeRequired: ''
   });
 
   // Validation state
@@ -88,6 +89,29 @@ const EventsManagement = () => {
       
       case 'eventTime': {
         if (!value) return 'Giờ diễn ra không được để trống';
+        
+        // Kiểm tra nếu ngày là hôm nay thì giờ phải trong tương lai
+        if (formData.eventDate) {
+          const selectedDate = new Date(formData.eventDate);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          if (selectedDate.getTime() === today.getTime()) {
+            const now = new Date();
+            const selectedTime = new Date(`${formData.eventDate}T${value}`);
+            if (selectedTime <= now) {
+              return 'Giờ diễn ra phải trong tương lai nếu sự kiện là hôm nay';
+            }
+          }
+        }
+        return '';
+      }
+      
+      case 'bloodTypeRequired': {
+        // bloodTypeRequired can be empty (null) or a valid blood type
+        if (value && !['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].includes(value)) {
+          return 'Nhóm máu không hợp lệ';
+        }
         return '';
       }
       
@@ -204,7 +228,8 @@ const EventsManagement = () => {
     try {
       const eventData = {
         ...formData,
-        maxParticipants: parseInt(formData.maxParticipants)
+        maxParticipants: parseInt(formData.maxParticipants),
+        bloodTypeRequired: formData.bloodTypeRequired || null
       };
 
       if (isEditing) {
@@ -236,7 +261,8 @@ const EventsManagement = () => {
       eventTitle: event.eventTitle,
       eventContent: event.eventContent,
       location: event.location,
-      maxParticipants: event.maxParticipants.toString()
+      maxParticipants: event.maxParticipants.toString(),
+      bloodTypeRequired: event.bloodTypeRequired || ''
     });
     setErrors({});
     setTouched({});
@@ -269,7 +295,8 @@ const EventsManagement = () => {
       eventTitle: '',
       eventContent: '',
       location: '',
-      maxParticipants: ''
+      maxParticipants: '',
+      bloodTypeRequired: ''
     });
     setIsEditing(false);
     setEditingEvent(null);
@@ -387,42 +414,89 @@ const EventsManagement = () => {
         )}
 
         {/* Controls Section */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 border border-gray-100">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex flex-col sm:flex-row gap-4 flex-1">
-              <div className="relative flex-1">
-                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 border border-gray-100">
+          <div className="space-y-6">
+            {/* Search and Filter Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {/* Search Input */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <FaSearch className="h-5 w-5 text-gray-400" />
+                </div>
                 <input
                   type="text"
-                  placeholder="Tìm kiếm sự kiện..."
+                  placeholder="Tìm kiếm theo tên sự kiện, địa điểm..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200 bg-gray-50 hover:bg-white focus:bg-white"
                 />
               </div>
               
+              {/* Filter Dropdown */}
               <div className="relative">
-                <FaFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <FaFilter className="h-5 w-5 text-gray-400" />
+                </div>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="pl-10 pr-8 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent appearance-none bg-white"
+                  className="w-full pl-12 pr-8 py-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent appearance-none bg-gray-50 hover:bg-white focus:bg-white transition-all duration-200 cursor-pointer"
                 >
-                  <option value="all">Tất cả sự kiện</option>
-                  <option value="upcoming">Sắp tới</option>
-                  <option value="today">Hôm nay</option>
-                  <option value="past">Đã qua</option>
+                  <option value="all">🎯 Tất cả sự kiện</option>
+                  <option value="upcoming">⏰ Sắp tới</option>
+                  <option value="today">📅 Hôm nay</option>
+                  <option value="past">📋 Đã qua</option>
                 </select>
+                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                  <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
               </div>
+
+              {/* Create Event Button */}
+              <button
+                onClick={openCreateModal}
+                className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center group"
+              >
+                <FaPlus className="mr-3 text-lg group-hover:rotate-90 transition-transform duration-200" />
+                <span className="text-lg">Tạo sự kiện mới</span>
+              </button>
             </div>
 
-            <button
-              onClick={openCreateModal}
-              className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-medium py-3 px-6 rounded-xl transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl flex items-center justify-center"
-            >
-              <FaPlus className="mr-2" />
-              Tạo sự kiện mới
-            </button>
+            {/* Search Results Info */}
+            {searchTerm && (
+              <div className="flex items-center justify-between text-sm text-gray-600 bg-blue-50 rounded-lg p-3 border border-blue-200">
+                <div className="flex items-center">
+                  <FaSearch className="mr-2 text-blue-500" />
+                  <span>
+                    Kết quả tìm kiếm cho: <span className="font-semibold text-blue-700">"{searchTerm}"</span>
+                  </span>
+                </div>
+                <span className="font-medium">
+                  {filteredEvents.length} sự kiện tìm thấy
+                </span>
+              </div>
+            )}
+
+            {/* Filter Status Info */}
+            {filterStatus !== 'all' && !searchTerm && (
+              <div className="flex items-center justify-between text-sm text-gray-600 bg-green-50 rounded-lg p-3 border border-green-200">
+                <div className="flex items-center">
+                  <FaFilter className="mr-2 text-green-500" />
+                  <span>
+                    Đang lọc: <span className="font-semibold text-green-700">
+                      {filterStatus === 'upcoming' ? 'Sự kiện sắp tới' :
+                       filterStatus === 'today' ? 'Sự kiện hôm nay' :
+                       filterStatus === 'past' ? 'Sự kiện đã qua' : 'Tất cả sự kiện'}
+                    </span>
+                  </span>
+                </div>
+                <span className="font-medium">
+                  {filteredEvents.length} sự kiện
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -515,7 +589,7 @@ const EventsManagement = () => {
               return (
                 <div
                   key={event.eventId}
-                  className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100"
+                  className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 flex flex-col h-full"
                 >
                   <div className="bg-gradient-to-r from-red-600 to-red-500 p-6 text-white relative">
                     <div className="absolute top-4 right-4">
@@ -523,20 +597,20 @@ const EventsManagement = () => {
                         {getStatusText(eventStatus)}
                       </span>
                     </div>
-                    <h3 className="text-xl font-bold mb-2 pr-20">{event.eventTitle}</h3>
-                    <p className="text-red-100 text-sm line-clamp-2">{event.eventContent}</p>
+                    <h3 className="text-xl font-bold mb-2 pr-20 line-clamp-2">{event.eventTitle}</h3>
+                    <p className="text-red-100 text-sm line-clamp-3">{event.eventContent}</p>
                   </div>
 
-                  <div className="p-6">
-                    <div className="space-y-4">
+                  <div className="p-6 flex-1 flex flex-col">
+                    <div className="space-y-4 flex-1">
                       <div className="flex items-center text-gray-600">
                         <FaCalendarAlt className="text-red-500 mr-3 flex-shrink-0" />
-                        <span className="font-medium">{formatDate(event.eventDate)}</span>
+                        <span className="font-medium line-clamp-1">{formatDate(event.eventDate)}</span>
                       </div>
 
                       <div className="flex items-center text-gray-600">
                         <FaClock className="text-red-500 mr-3 flex-shrink-0" />
-                        <span>{formatTime(event.eventTime)}</span>
+                        <span className="line-clamp-1">{formatTime(event.eventTime)}</span>
                       </div>
 
                       <div className="flex items-start text-gray-600">
@@ -546,11 +620,21 @@ const EventsManagement = () => {
 
                       <div className="flex items-center text-gray-600">
                         <FaUsers className="text-red-500 mr-3 flex-shrink-0" />
-                        <span>Tối đa {event.maxParticipants} người tham gia</span>
+                        <span className="line-clamp-1">Tối đa {event.maxParticipants} người tham gia</span>
+                      </div>
+
+                      <div className="flex items-center text-gray-600">
+                        <FaTint className="text-red-500 mr-3 flex-shrink-0" />
+                        <span className="line-clamp-1">
+                          {event.bloodTypeRequired 
+                            ? `Nhóm máu: ${event.bloodTypeRequired}`
+                            : 'Tất cả nhóm máu'
+                          }
+                        </span>
                       </div>
                     </div>
 
-                    <div className="mt-6 flex space-x-3">
+                    <div className="mt-6 pt-4 border-t border-gray-100 flex space-x-3">
                       <button
                         onClick={() => handleEdit(event)}
                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-xl transition-colors duration-200 flex items-center justify-center"
@@ -648,6 +732,38 @@ const EventsManagement = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Nhóm máu yêu cầu
+                  </label>
+                  <select
+                    name="bloodTypeRequired"
+                    value={formData.bloodTypeRequired}
+                    onChange={handleInputChange}
+                    onBlur={handleBlur}
+                    className={getFieldClassName('bloodTypeRequired')}
+                  >
+                    <option value="">Tất cả nhóm máu</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
+                  {touched.bloodTypeRequired && errors.bloodTypeRequired && (
+                    <p className="text-red-500 text-xs mt-1"><FaExclamationTriangle className="inline mr-1" /> {errors.bloodTypeRequired}</p>
+                  )}
+                  {formData.bloodTypeRequired && !errors.bloodTypeRequired && (
+                    <p className="text-green-600 text-xs mt-1"><FaCheck className="inline mr-1" /> Tốt</p>
+                  )}
+                  <p className="text-gray-500 text-xs mt-1">
+                    Để trống nếu sự kiện dành cho tất cả nhóm máu
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Nội dung <span className="text-red-500">*</span>
                   </label>
                   <textarea
@@ -680,6 +796,7 @@ const EventsManagement = () => {
                       onChange={handleInputChange}
                       onBlur={handleBlur}
                       className={getFieldClassName('eventDate')}
+                      min={new Date().toISOString().split('T')[0]}
                       required
                     />
                     {touched.eventDate && errors.eventDate && (
