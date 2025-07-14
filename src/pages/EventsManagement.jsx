@@ -18,6 +18,8 @@ const EventsManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showHospitalDropdown, setShowHospitalDropdown] = useState(false);
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [pendingDeleteEvent, setPendingDeleteEvent] = useState(null);
   
   const [formData, setFormData] = useState({
     eventDate: '',
@@ -269,10 +271,15 @@ const EventsManagement = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (eventId, eventTitle) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa sự kiện "${eventTitle}"?`)) {
-      return;
-    }
+  const handleDelete = (eventId, eventTitle) => {
+    setPendingDeleteEvent({ eventId, eventTitle });
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmDeleteEvent = async () => {
+    if (!pendingDeleteEvent) return;
+
+    const { eventId } = pendingDeleteEvent;
 
     setDeletingEvent(eventId);
     try {
@@ -286,6 +293,14 @@ const EventsManagement = () => {
     } finally {
       setDeletingEvent(null);
     }
+
+    setShowDeleteConfirmModal(false);
+    setPendingDeleteEvent(null);
+  };
+
+  const cancelDeleteEvent = () => {
+    setShowDeleteConfirmModal(false);
+    setPendingDeleteEvent(null);
   };
 
   const resetForm = () => {
@@ -379,6 +394,57 @@ const EventsManagement = () => {
           type="success"
           onClose={() => setShowSuccess(false)}
         />
+      )}
+
+      {/* Modal xác nhận xóa sự kiện */}
+      {showDeleteConfirmModal && pendingDeleteEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <FaExclamationTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Xác nhận xóa sự kiện
+                </h3>
+              </div>
+            </div>
+            <div className="mb-6">
+              <p className="text-sm text-gray-600">
+                Bạn có chắc chắn muốn xóa sự kiện <span className="font-semibold text-gray-900">"{pendingDeleteEvent.eventTitle}"</span>?
+              </p>
+              <p className="text-xs text-gray-500 mt-2">
+                Hành động này không thể hoàn tác. Tất cả thông tin về sự kiện này sẽ bị xóa vĩnh viễn.
+              </p>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelDeleteEvent}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={confirmDeleteEvent}
+                disabled={deletingEvent === pendingDeleteEvent.eventId}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-md transition-colors duration-200 disabled:cursor-not-allowed flex items-center"
+              >
+                {deletingEvent === pendingDeleteEvent.eventId ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Đang xóa...
+                  </>
+                ) : (
+                  'Xác nhận xóa'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

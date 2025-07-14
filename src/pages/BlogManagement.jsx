@@ -20,6 +20,8 @@ const BlogManagement = () => {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [pendingDeleteBlog, setPendingDeleteBlog] = useState(null);
 
   // Validation functions
   const validateField = (name, value) => {
@@ -108,8 +110,15 @@ const BlogManagement = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (blogId) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa bài viết này?')) return;
+  const handleDelete = (blogId) => {
+    setPendingDeleteBlog({ blogId });
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmDeleteBlog = async () => {
+    if (!pendingDeleteBlog) return;
+
+    const { blogId } = pendingDeleteBlog;
     setIsSubmitting(true);
     try {
       await deleteBlogPost(blogId);
@@ -119,6 +128,14 @@ const BlogManagement = () => {
     } finally {
       setIsSubmitting(false);
     }
+
+    setShowDeleteConfirmModal(false);
+    setPendingDeleteBlog(null);
+  };
+
+  const cancelDeleteBlog = () => {
+    setShowDeleteConfirmModal(false);
+    setPendingDeleteBlog(null);
   };
 
   const handleChange = (e) => {
@@ -229,6 +246,57 @@ const BlogManagement = () => {
         {error && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md mb-6">
             <p className="text-sm text-red-700">{error}</p>
+          </div>
+        )}
+
+        {/* Modal xác nhận xóa blog */}
+        {showDeleteConfirmModal && pendingDeleteBlog && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+            <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+              <div className="flex items-center mb-4">
+                <div className="flex-shrink-0">
+                  <FaTrash className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-lg font-medium text-gray-900">
+                    Xác nhận xóa blog
+                  </h3>
+                </div>
+              </div>
+              <div className="mb-6">
+                <p className="text-sm text-gray-600">
+                  Bạn có chắc chắn muốn xóa bài viết blog này?
+                </p>
+                <p className="text-xs text-gray-500 mt-2">
+                  Hành động này không thể hoàn tác. Bài viết sẽ bị xóa vĩnh viễn.
+                </p>
+              </div>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={cancelDeleteBlog}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200"
+                >
+                  Hủy bỏ
+                </button>
+                <button
+                  onClick={confirmDeleteBlog}
+                  disabled={isSubmitting}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-md transition-colors duration-200 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Đang xóa...
+                    </>
+                  ) : (
+                    'Xác nhận xóa'
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

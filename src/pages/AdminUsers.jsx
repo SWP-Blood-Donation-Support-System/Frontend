@@ -42,6 +42,8 @@ const AdminUsers = () => {
   const [createErrors, setCreateErrors] = useState({});
   const [creating, setCreating] = useState(false);
   const [apiError, setApiError] = useState('');
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [pendingDeleteUser, setPendingDeleteUser] = useState(null);
 
   // Fetch users mỗi khi filters thay đổi
   useEffect(() => {
@@ -334,8 +336,15 @@ const AdminUsers = () => {
   };
 
   // Xóa user
-  const handleDeleteUser = async (username) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa người dùng này?')) return;
+  const handleDeleteUser = (username) => {
+    setPendingDeleteUser({ username });
+    setShowDeleteConfirmModal(true);
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!pendingDeleteUser) return;
+
+    const { username } = pendingDeleteUser;
     try {
       const res = await fetch(`${API_URL}/${username}`, {
         method: 'DELETE',
@@ -352,6 +361,14 @@ const AdminUsers = () => {
     } catch (err) {
       setToast({ message: err.message || 'Lỗi xóa user', type: 'error' });
     }
+
+    setShowDeleteConfirmModal(false);
+    setPendingDeleteUser(null);
+  };
+
+  const cancelDeleteUser = () => {
+    setShowDeleteConfirmModal(false);
+    setPendingDeleteUser(null);
   };
 
   // Sửa user
@@ -472,6 +489,48 @@ const AdminUsers = () => {
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
+
+      {/* Modal xác nhận xóa user */}
+      {showDeleteConfirmModal && pendingDeleteUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0">
+                <FaTrash className="h-6 w-6 text-red-600" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Xác nhận xóa người dùng
+                </h3>
+              </div>
+            </div>
+            <div className="mb-6">
+              <p className="text-sm text-gray-600">
+                Bạn có chắc chắn muốn xóa người dùng <span className="font-semibold text-gray-900">"{pendingDeleteUser.username}"</span>?
+              </p>
+              <p className="text-xs text-gray-500 mt-2">
+                Hành động này không thể hoàn tác. Tất cả thông tin của người dùng này sẽ bị xóa vĩnh viễn.
+              </p>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={cancelDeleteUser}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200"
+              >
+                Hủy bỏ
+              </button>
+              <button
+                onClick={confirmDeleteUser}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors duration-200 flex items-center"
+              >
+                <FaTrash className="mr-2" />
+                Xác nhận xóa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="overflow-x-auto rounded-lg shadow">
         <table className="min-w-[1400px] w-full divide-y divide-gray-200">
           <thead className="bg-gray-100">
