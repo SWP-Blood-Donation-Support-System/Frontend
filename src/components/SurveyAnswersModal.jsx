@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FaTimes, FaCheckCircle, FaTimesCircle, FaCalendarAlt, FaSpinner, FaEdit } from 'react-icons/fa';
-import { getSurveyAnswers, updateAppointmentStatus } from '../utils/api';
+import { getSurveyAnswers, updateAppointmentStatus, getAuthToken } from '../utils/api';
 
 const SurveyAnswersModal = ({ appointmentId, onClose, onStatusUpdate }) => {
   const [surveyData, setSurveyData] = useState(null);
@@ -20,12 +20,19 @@ const SurveyAnswersModal = ({ appointmentId, onClose, onStatusUpdate }) => {
   const fetchSurveyAnswers = async () => {
     try {
       setLoading(true);
-      setError('');
-      const data = await getSurveyAnswers(appointmentId);
+      const response = await fetch(`https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Survey/answered/${appointmentId}`, {
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch survey answers');
+      }
+
+      const data = await response.json();
       setSurveyData(data);
-      setSelectedStatus(data.status || '');
     } catch (err) {
-      setError(err.message || 'Không thể tải câu trả lời khảo sát');
       console.error('Error fetching survey answers:', err);
     } finally {
       setLoading(false);

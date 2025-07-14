@@ -372,13 +372,12 @@ const EmergencyRegisterForm = ({ onEmergencyCreated }) => {
                     </label>
                     <ImageUpload
                       value={form.emergencyImage}
-                      onChange={(url) => {
+                      onImageChange={(url) => {
                         setForm(prev => ({ ...prev, emergencyImage: url }));
                         const fieldError = validateField('emergencyImage', url);
                         setErrors(prev => ({ ...prev, emergencyImage: fieldError }));
                       }}
-                      placeholder="Kéo thả ảnh vào đây hoặc click để chọn file"
-                      disabled={loading}
+                      mode="base64"
                     />
                     {errors.emergencyImage && (
                       <p className="text-red-600 text-sm mt-1 flex items-center">

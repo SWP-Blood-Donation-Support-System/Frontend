@@ -137,9 +137,8 @@ const AdminHospitals = () => {
                 <label className="block text-sm font-medium mb-1">Ảnh bệnh viện (tùy chọn)</label>
                 <ImageUpload
                   value={form.hospitalImage}
-                  onChange={(url) => setForm(prev => ({ ...prev, hospitalImage: url }))}
-                  placeholder="Kéo thả ảnh vào đây hoặc click để chọn file"
-                  disabled={submitting}
+                  onImageChange={(url) => setForm(prev => ({ ...prev, hospitalImage: url }))}
+                  mode="base64"
                 />
               </div>
               {formError && <div className="text-red-600 text-sm mb-2">{formError}</div>}

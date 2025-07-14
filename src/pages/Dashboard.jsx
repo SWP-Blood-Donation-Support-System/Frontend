@@ -4,6 +4,7 @@ import { FaTint, FaUserPlus, FaExclamationTriangle, FaChartLine, FaCalendarAlt, 
 import { getBloodInventory, getAllReports, isAuthenticated, getUser, logout } from '../utils/api';
 import BloodInventoryDetail from './BloodInventoryDetail';
 import Toast from '../components/Toast';
+import ReportsList from '../components/ReportsList';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -55,8 +56,6 @@ const Dashboard = () => {
           logout();
           navigate('/login');
         }, 3000);
-      } else {
-        setError(err.message || 'Lỗi tải thông tin kho máu');
       }
     } finally {
       setLoading(false);
@@ -76,8 +75,6 @@ const Dashboard = () => {
           logout();
           navigate('/login');
         }, 3000);
-      } else {
-        setReportsError(err.message || 'Lỗi tải báo cáo');
       }
     } finally {
       setReportsLoading(false);
@@ -156,10 +153,7 @@ const Dashboard = () => {
     );
   }
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('vi-VN');
-  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -428,64 +422,7 @@ const Dashboard = () => {
           </div>
 
           {/* Reports */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-800 flex items-center">
-                <FaFileAlt className="text-indigo-500 mr-3" />
-                Báo cáo hệ thống
-              </h2>
-              {reportsLoading && (
-                <div className="flex items-center text-sm text-gray-500">
-                  <FaSpinner className="animate-spin mr-2" />
-                  Đang tải...
-                </div>
-              )}
-            </div>
-            
-            {reportsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <FaSpinner className="animate-spin text-2xl text-indigo-600 mr-3" />
-                <span className="text-gray-600">Đang tải báo cáo...</span>
-              </div>
-            ) : reports.length === 0 ? (
-              <div className="text-center py-8">
-                <FaFileAlt className="text-4xl text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-600 mb-2">Chưa có báo cáo</h3>
-                <p className="text-gray-500 text-sm">Báo cáo sẽ được tạo tự động</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {reports.slice(0, 5).map((report) => (
-                  <div key={report.reportId || report.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <span className="font-medium text-gray-900">
-                          #{report.reportId || report.id}
-                        </span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          (report.status || report.reportStatus) === 'Completed'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {report.status || report.reportStatus || 'Đang xử lý'}
-                        </span>
-                      </div>
-                      <p className="text-sm font-medium text-indigo-600 mb-1">
-                        {report.reportType || report.type || 'Báo cáo tổng hợp'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {formatDate(report.createdDate || report.date)}
-                      </p>
-                    </div>
-                    <button className="flex items-center text-indigo-600 hover:text-indigo-700 text-sm font-medium transition-colors">
-                      <FaDownload className="mr-1" />
-                      Tải
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ReportsList />
         </div>
 
         {/* Modals */}
@@ -495,6 +432,37 @@ const Dashboard = () => {
             selectedBloodType={selectedBloodType}
             onClose={() => setShowBloodDetail(false)}
             getHospitalName={getHospitalName}
+            onRefresh={async () => {
+              try {
+                // Refresh blood inventory data
+                await fetchBloodInventory();
+                
+                // Refresh blood inventory detail
+                const response = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/blood-inventory', {
+                  method: 'GET',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem('token')}`,
+                  },
+                });
+                if (!response.ok) throw new Error('Không thể tải chi tiết kho máu');
+                const detailData = await response.json();
+                const filteredInventory = (detailData.inventory || []).filter(
+                  detail => detail.bloodType === selectedBloodType
+                );
+                setBloodInventoryDetail(filteredInventory);
+                
+                // Refresh reports data
+                await fetchReports();
+                
+                console.log('All data refreshed successfully');
+              } catch (err) {
+                console.error('Error refreshing data:', err);
+                setToastMessage('Có lỗi khi cập nhật dữ liệu');
+                setToastType('error');
+                setShowToast(true);
+              }
+            }}
           />
         )}
 

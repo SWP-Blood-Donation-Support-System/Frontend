@@ -1,66 +1,139 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaTint, FaHistory, FaEdit, FaIdCard } from 'react-icons/fa';
-import { getUser } from '../utils/api';
+import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaTint, FaHistory, FaEdit, FaIdCard, FaCalendarAlt, FaFileAlt, FaStar, FaHeartbeat, FaShieldAlt, FaInfoCircle } from 'react-icons/fa';
+import { getUser, getUserProfile, updateUserProfile, getUserReports } from '../utils/api';
 import Toast from '../components/Toast';
 
 const Profile = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [userReports, setUserReports] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reportsLoading, setReportsLoading] = useState(true);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('success');
   const { register, handleSubmit, formState: { errors } } = useForm();
 
   useEffect(() => {
-    const user = getUser();
-    if (user) {
-      setUserData(user);
-      console.log('User data from localStorage:', user);
-    }
-    setLoading(false);
+    const fetchUserData = async () => {
+      try {
+        setLoading(true);
+        const response = await getUserProfile();
+        if (response && response.user) {
+          setUserData(response.user);
+          console.log('User data from server:', response.user);
+          console.log('Profile complete:', response.isProfileComplete);
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
+        // Fallback to localStorage if API fails
+        const localUser = getUser();
+        if (localUser) {
+          setUserData(localUser);
+          console.log('Using user data from localStorage:', localUser);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+    fetchUserReports();
   }, []);
 
-  // Mock donation history (có thể thay bằng API call sau)
-  const donationHistory = [
-    {
-      id: 1,
-      date: '2024-01-15',
-      location: 'Bệnh viện Chợ Rẫy',
-      bloodType: userData?.bloodType || 'A+',
-      status: 'completed',
-    },
-    {
-      id: 2,
-      date: '2023-10-20',
-      location: 'Bệnh viện Nhân dân 115',
-      bloodType: userData?.bloodType || 'A+',
-      status: 'completed',
-    },
-    {
-      id: 3,
-      date: '2023-07-15',
-      location: 'Bệnh viện Đại học Y Dược',
-      bloodType: userData?.bloodType || 'A+',
-      status: 'completed',
-    },
-  ];
+  const fetchUserReports = async () => {
+    try {
+      setReportsLoading(true);
+      const data = await getUserReports();
+      setUserReports(data || []);
+    } catch (err) {
+      console.error('Error fetching user reports:', err);
+      setUserReports([]);
+    } finally {
+      setReportsLoading(false);
+    }
+  };
 
   const onSubmit = async (data) => {
     try {
-      // TODO: Implement API call to update user profile
-      console.log('Updated profile data:', data);
+      const profileData = {
+        username: userData.username,
+        fullName: data.fullName,
+        dateOfBirth: data.dateOfBirth,
+        gender: data.gender,
+        phone: data.phone,
+        address: data.address,
+        bloodType: data.bloodType,
+        profileStatus: 'Active'
+      };
+
+      await updateUserProfile(profileData);
+      
+      // Update local user data
+      setUserData(prev => ({ ...prev, ...profileData }));
       setIsEditing(false);
       setToastMessage('Cập nhật thông tin thành công!');
       setToastType('success');
       setShowToast(true);
     } catch (error) {
       console.error('Error updating profile:', error);
-      setToastMessage('Có lỗi xảy ra. Vui lòng thử lại sau.');
+      setToastMessage(error.message || 'Có lỗi xảy ra. Vui lòng thử lại sau.');
       setToastType('error');
       setShowToast(true);
     }
+  };
+
+  const getReportTypeIcon = (reportType) => {
+    switch (reportType) {
+      case 'DonationReview':
+        return <FaHeartbeat className="text-red-500" />;
+      case 'Emergency':
+        return <FaFileAlt className="text-orange-500" />;
+      case 'General':
+        return <FaFileAlt className="text-blue-500" />;
+      default:
+        return <FaFileAlt className="text-gray-500" />;
+    }
+  };
+
+  const getReportTypeLabel = (reportType) => {
+    switch (reportType) {
+      case 'DonationReview':
+        return 'Đánh giá hiến máu';
+      case 'Emergency':
+        return 'Khẩn cấp';
+      case 'General':
+        return 'Chung';
+      default:
+        return reportType;
+    }
+  };
+
+  const parseDonationReview = (content) => {
+    if (content.includes('Đánh giá:')) {
+      const lines = content.split('\n');
+      const ratingLine = lines[0];
+      const ratingMatch = ratingLine.match(/Đánh giá:\s*(\d+)\/5/);
+      const rating = ratingMatch ? parseInt(ratingMatch[1]) : 0;
+      const reviewContent = lines.slice(2).join('\n').trim();
+      return { rating, content: reviewContent };
+    }
+    return { rating: 0, content };
+  };
+
+  const renderStars = (rating) => {
+    return (
+      <div className="flex items-center space-x-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <FaStar
+            key={star}
+            className={`text-sm ${star <= rating ? 'text-yellow-400' : 'text-gray-300'}`}
+          />
+        ))}
+        <span className="text-xs text-gray-600 ml-1">({rating}/5)</span>
+      </div>
+    );
   };
 
   if (loading) {
@@ -90,14 +163,14 @@ const Profile = () => {
       <h1 className="text-3xl font-bold text-center mb-8">Thông tin cá nhân</h1>
 
       {/* Profile Information */}
-      <div className="card mb-8">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-semibold">Thông tin cá nhân</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">Thông tin cá nhân</h2>
           <button
             onClick={() => setIsEditing(!isEditing)}
-            className="btn btn-primary"
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center"
           >
-            <FaEdit className="inline-block mr-2" />
+            <FaEdit className="mr-2" />
             {isEditing ? 'Hủy' : 'Chỉnh sửa'}
           </button>
         </div>
@@ -117,7 +190,7 @@ const Profile = () => {
                     type="text"
                     defaultValue={userData.username}
                     disabled
-                    className="input pl-10 bg-gray-100"
+                    className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg bg-gray-100"
                   />
                 </div>
                 <p className="mt-1 text-xs text-gray-500">Username không thể thay đổi</p>
@@ -125,7 +198,7 @@ const Profile = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Họ và tên
+                  Họ và tên <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -135,7 +208,7 @@ const Profile = () => {
                     type="text"
                     defaultValue={userData.fullName || userData.name || ''}
                     {...register('fullName', { required: 'Vui lòng nhập họ tên' })}
-                    className="input pl-10"
+                    className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
                 {errors.fullName && (
@@ -145,33 +218,41 @@ const Profile = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email
+                  Ngày sinh <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaEnvelope className="text-gray-400" />
-                  </div>
-                  <input
-                    type="email"
-                    defaultValue={userData.email || ''}
-                    {...register('email', {
-                      required: 'Vui lòng nhập email',
-                      pattern: {
-                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                        message: 'Email không hợp lệ',
-                      },
-                    })}
-                    className="input pl-10"
-                  />
-                </div>
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+                <input
+                  type="date"
+                  defaultValue={userData.dateOfBirth || ''}
+                  {...register('dateOfBirth', { required: 'Vui lòng nhập ngày sinh' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+                {errors.dateOfBirth && (
+                  <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth.message}</p>
                 )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Số điện thoại
+                  Giới tính <span className="text-red-500">*</span>
+                </label>
+                <select
+                  defaultValue={userData.gender || ''}
+                  {...register('gender', { required: 'Vui lòng chọn giới tính' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                >
+                  <option value="">Chọn giới tính</option>
+                  <option value="Nam">Nam</option>
+                  <option value="Nữ">Nữ</option>
+                  <option value="Khác">Khác</option>
+                </select>
+                {errors.gender && (
+                  <p className="mt-1 text-sm text-red-600">{errors.gender.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Số điện thoại <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -187,7 +268,7 @@ const Profile = () => {
                         message: 'Số điện thoại không hợp lệ',
                       },
                     })}
-                    className="input pl-10"
+                    className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
                 {errors.phone && (
@@ -197,7 +278,7 @@ const Profile = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Địa chỉ
+                  Địa chỉ <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -207,7 +288,7 @@ const Profile = () => {
                     type="text"
                     defaultValue={userData.address || ''}
                     {...register('address', { required: 'Vui lòng nhập địa chỉ' })}
-                    className="input pl-10"
+                    className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   />
                 </div>
                 {errors.address && (
@@ -217,162 +298,220 @@ const Profile = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nhóm máu
+                  Nhóm máu <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <FaTint className="text-gray-400" />
                   </div>
-                  <input
-                    type="text"
+                  <select
                     defaultValue={userData.bloodType || ''}
-                    {...register('bloodType')}
-                    className="input pl-10"
-                  />
+                    {...register('bloodType', { required: 'Vui lòng chọn nhóm máu' })}
+                    className="w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  >
+                    <option value="">Chọn nhóm máu</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Vai trò
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <FaUser className="text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    defaultValue={userData.role || ''}
-                    disabled
-                    className="input pl-10 bg-gray-100"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-gray-500">Vai trò không thể thay đổi</p>
+                {errors.bloodType && (
+                  <p className="mt-1 text-sm text-red-600">{errors.bloodType.message}</p>
+                )}
               </div>
             </div>
 
-            <div className="flex justify-end">
-              <button type="submit" className="btn btn-primary">
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
                 Lưu thay đổi
               </button>
             </div>
           </form>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <FaIdCard className="text-gray-400" />
               <div>
-                <p className="text-sm text-gray-600">Username</p>
-                <p className="font-medium">{userData.username || 'N/A'}</p>
+                <p className="text-sm text-gray-500">Username</p>
+                <p className="font-medium">{userData.username}</p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <FaUser className="text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-600">Họ và tên</p>
-                <p className="font-medium">{userData.fullName || userData.name || 'N/A'}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <FaEnvelope className="text-gray-400" />
               <div>
-                <p className="text-sm text-gray-600">Email</p>
-                <p className="font-medium">{userData.email || 'N/A'}</p>
+                <p className="text-sm text-gray-500">Email</p>
+                <p className="font-medium">{userData.email || 'Chưa cập nhật'}</p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <FaPhone className="text-gray-400" />
+            <div className="flex items-center space-x-3">
+              <FaShieldAlt className="text-gray-400" />
               <div>
-                <p className="text-sm text-gray-600">Số điện thoại</p>
-                <p className="font-medium">{userData.phoneNumber || userData.phone || 'N/A'}</p>
+                <p className="text-sm text-gray-500">Vai trò</p>
+                <p className="font-medium">
+                  {userData.role === 'User' ? 'Người dùng' : 
+                   userData.role === 'Admin' ? 'Quản trị viên' : 
+                   userData.role === 'Staff' ? 'Nhân viên' : userData.role}
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <FaMapMarkerAlt className="text-gray-400" />
+            <div className="flex items-center space-x-3">
+              <FaInfoCircle className="text-gray-400" />
               <div>
-                <p className="text-sm text-gray-600">Địa chỉ</p>
-                <p className="font-medium">{userData.address || 'N/A'}</p>
+                <p className="text-sm text-gray-500">Trạng thái hồ sơ</p>
+                <p className="font-medium">{userData.profileStatus || 'Chưa cập nhật'}</p>
               </div>
             </div>
 
-            <div className="flex items-center space-x-4">
-              <FaTint className="text-gray-400" />
-              <div>
-                <p className="text-sm text-gray-600">Nhóm máu</p>
-                <p className="font-medium">{userData.bloodType || 'N/A'}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <FaUser className="text-gray-400" />
               <div>
-                <p className="text-sm text-gray-600">Vai trò</p>
-                <p className="font-medium">{userData.role || 'N/A'}</p>
+                <p className="text-sm text-gray-500">Họ và tên</p>
+                <p className="font-medium">{userData.fullName || userData.name || 'Chưa cập nhật'}</p>
               </div>
             </div>
 
-            {userData.userId && (
-              <div className="flex items-center space-x-4">
-                <FaIdCard className="text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-600">User ID</p>
-                  <p className="font-medium">{userData.userId}</p>
-                </div>
+            <div className="flex items-center space-x-3">
+              <FaCalendarAlt className="text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-500">Ngày sinh</p>
+                <p className="font-medium">{userData.dateOfBirth ? new Date(userData.dateOfBirth).toLocaleDateString('vi-VN') : 'Chưa cập nhật'}</p>
               </div>
-            )}
+            </div>
 
-            {userData.dateOfBirth && (
-              <div className="flex items-center space-x-4">
-                <FaHistory className="text-gray-400" />
-                <div>
-                  <p className="text-sm text-gray-600">Ngày sinh</p>
-                  <p className="font-medium">{userData.dateOfBirth}</p>
-                </div>
+            <div className="flex items-center space-x-3">
+              <FaUser className="text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-500">Giới tính</p>
+                <p className="font-medium">{userData.gender || 'Chưa cập nhật'}</p>
               </div>
-            )}
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <FaPhone className="text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-500">Số điện thoại</p>
+                <p className="font-medium">{userData.phoneNumber || userData.phone || 'Chưa cập nhật'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <FaMapMarkerAlt className="text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-500">Địa chỉ</p>
+                <p className="font-medium">{userData.address || 'Chưa cập nhật'}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <FaTint className="text-gray-400" />
+              <div>
+                <p className="text-sm text-gray-500">Nhóm máu</p>
+                <p className="font-medium">{userData.bloodType || 'Chưa cập nhật'}</p>
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Debug Info
-      <div className="card mb-8">
-        <h3 className="text-lg font-semibold mb-4">Thông tin Debug</h3>
-        <div className="bg-gray-50 p-4 rounded-lg">
-          <pre className="text-xs text-gray-700 overflow-auto">
-            {JSON.stringify(userData, null, 2)}
-          </pre>
-        </div>
-      </div> */}
-
-      {/* Donation History */}
-      <div className="card">
-        <h2 className="text-2xl font-semibold mb-6">Lịch sử hiến máu</h2>
-        <div className="space-y-4">
-          {donationHistory.map((donation) => (
-            <div key={donation.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div>
-                <div className="flex items-center text-gray-600">
-                  <FaTint className="mr-2" />
-                  <span>Nhóm máu: {donation.bloodType}</span>
-                </div>
-                <div className="flex items-center text-gray-600 mt-1">
-                  <FaMapMarkerAlt className="mr-2" />
-                  <span>{donation.location}</span>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-gray-600">{donation.date}</p>
-                <span className="inline-block px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
-                  Hoàn thành
-                </span>
-              </div>
+      {/* User Reports */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-semibold text-gray-900 flex items-center">
+            <FaFileAlt className="text-red-500 mr-3" />
+            Báo cáo của tôi
+          </h2>
+          {reportsLoading && (
+            <div className="flex items-center text-sm text-gray-500">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
+              Đang tải...
             </div>
-          ))}
+          )}
         </div>
+
+        {reportsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mr-3"></div>
+            <span className="text-gray-600">Đang tải báo cáo...</span>
+          </div>
+        ) : userReports.length === 0 ? (
+          <div className="text-center py-8">
+            <FaFileAlt className="text-gray-400 text-3xl mx-auto mb-2" />
+            <p className="text-gray-600">Chưa có báo cáo nào</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {userReports.map((report) => {
+              const isDonationReview = report.reportType === 'DonationReview';
+              const reviewData = isDonationReview ? parseDonationReview(report.reportContent) : null;
+
+              return (
+                <div
+                  key={report.reportId}
+                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      {/* Header */}
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="flex-shrink-0">
+                          {getReportTypeIcon(report.reportType)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              {getReportTypeLabel(report.reportType)}
+                            </span>
+                            {isDonationReview && reviewData.rating > 0 && (
+                              <div className="flex items-center">
+                                {renderStars(reviewData.rating)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Date */}
+                      <div className="flex items-center space-x-4 text-sm text-gray-500 mb-3">
+                        <div className="flex items-center">
+                          <FaCalendarAlt className="mr-1" />
+                          <span>{new Date(report.reportDate).toLocaleDateString('vi-VN')}</span>
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                          {isDonationReview && reviewData.content 
+                            ? reviewData.content 
+                            : report.reportContent
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Toast notification */}

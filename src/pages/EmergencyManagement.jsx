@@ -70,7 +70,9 @@ const EmergencyManagement = () => {
 
   const handleApproval = async (emergencyId, status) => {
     if (status !== 'Đã xét duyệt' && status !== 'Từ chối') {
-      alert('Vui lòng nhập chính xác "Đã xét duyệt" hoặc "Từ chối"');
+      setToastMessage('Vui lòng nhập chính xác "Đã xét duyệt" hoặc "Từ chối"');
+      setToastType('error');
+      setShowToast(true);
       return;
     }
 
@@ -97,12 +99,16 @@ const EmergencyManagement = () => {
         await createNotification(emergencyId, 'Đơn khẩn cấp đã được xét duyệt');
       }
 
-      alert(`Đã ${status.toLowerCase()} đơn khẩn cấp thành công!`);
+      setToastMessage(`Đã ${status.toLowerCase()} đơn khẩn cấp thành công!`);
+      setToastType('success');
+      setShowToast(true);
       setShowApprovalModal(false);
       setApprovalStatus('');
       setSelectedEmergency(null);
     } catch (error) {
-      alert(`Lỗi: ${error.message}`);
+      setToastMessage(`Lỗi: ${error.message}`);
+      setToastType('error');
+      setShowToast(true);
     } finally {
       setApprovalLoading(false);
     }
@@ -170,7 +176,9 @@ const EmergencyManagement = () => {
       setSelectedEmergency({ ...emergency, bloodComparison: data });
       setShowBloodComparisonModal(true);
     } catch (error) {
-      alert(`Lỗi: ${error.message}`);
+      setToastMessage(`Lỗi: ${error.message}`);
+      setToastType('error');
+      setShowToast(true);
     }
   };
 

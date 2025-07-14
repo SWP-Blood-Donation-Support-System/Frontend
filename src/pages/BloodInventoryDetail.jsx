@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   FaTint, 
   FaCheckCircle, 
@@ -8,10 +8,45 @@ import {
   FaThermometerHalf,
   FaInfoCircle,
   FaArrowUp,
-  FaArrowDown
+  FaArrowDown,
+  FaClock
 } from 'react-icons/fa';
+import { markBloodAsExpired } from '../utils/api';
+import Toast from '../components/Toast';
 
-const BloodInventoryDetail = ({ bloodInventory, onClose, getHospitalName }) => {
+const BloodInventoryDetail = ({ bloodInventory, onClose, getHospitalName, onRefresh }) => {
+  const [loadingStates, setLoadingStates] = useState({});
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleMarkAsExpired = async (bloodDetailId) => {
+    if (!bloodDetailId) {
+      showToast('Không thể đánh dấu máu hết hạn: ID không hợp lệ', 'error');
+      return;
+    }
+
+    setLoadingStates(prev => ({ ...prev, [bloodDetailId]: true }));
+
+    try {
+      await markBloodAsExpired(bloodDetailId);
+      showToast('Đã đánh dấu máu hết hạn thành công');
+      
+      // Refresh data if callback is provided
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (error) {
+      console.error('Error marking blood as expired:', error);
+      showToast(error.message || 'Lỗi khi đánh dấu máu hết hạn', 'error');
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [bloodDetailId]: false }));
+    }
+  };
+
   // Kiểm tra nếu có dữ liệu so sánh máu đơn khẩn cấp
   const isEmergencyComparison = bloodInventory && bloodInventory.isEnough !== undefined;
   
@@ -157,14 +192,35 @@ const BloodInventoryDetail = ({ bloodInventory, onClose, getHospitalName }) => {
                             </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-lg text-gray-900">
-                            {detail.volume} ml
+                        <div className="flex items-center space-x-4">
+                          <div className="text-right">
+                            <div className="font-bold text-lg text-gray-900">
+                              {detail.volume} ml
+                            </div>
+                            <div className="flex items-center space-x-1 text-sm text-gray-600">
+                              <FaCalendarAlt className="text-xs" />
+                              <span>{new Date(detail.bloodDetailDate).toLocaleDateString('vi-VN')}</span>
+                            </div>
                           </div>
-                          <div className="flex items-center space-x-1 text-sm text-gray-600">
-                            <FaCalendarAlt className="text-xs" />
-                            <span>{new Date(detail.bloodDetailDate).toLocaleDateString('vi-VN')}</span>
-                          </div>
+                          {detail.bloodDetailId && detail.bloodDetailStatus !== 'Đã sử dụng' && detail.bloodDetailStatus !== 'Hết hạn' && (
+                            <button
+                              onClick={() => handleMarkAsExpired(detail.bloodDetailId)}
+                              disabled={loadingStates[detail.bloodDetailId]}
+                              className="px-3 py-1 bg-orange-500 text-white rounded-md hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm flex items-center space-x-1"
+                            >
+                              {loadingStates[detail.bloodDetailId] ? (
+                                <>
+                                  <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                  <span>Đang xử lý...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <FaClock className="text-xs" />
+                                  <span>Đánh dấu hết hạn</span>
+                                </>
+                              )}
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -195,6 +251,15 @@ const BloodInventoryDetail = ({ bloodInventory, onClose, getHospitalName }) => {
             </div>
           </div>
         </div>
+        
+        {/* Toast Notification */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
       </div>
     );
   }
@@ -221,11 +286,12 @@ const BloodInventoryDetail = ({ bloodInventory, onClose, getHospitalName }) => {
                 <th className="px-4 py-2 text-left font-semibold">Trạng thái</th>
                 <th className="px-4 py-2 text-left font-semibold">Ghi chú</th>
                 <th className="px-4 py-2 text-left font-semibold">Bệnh viện</th>
+                <th className="px-4 py-2 text-left font-semibold">Thao tác</th>
               </tr>
             </thead>
             <tbody>
               {bloodInventory && bloodInventory.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-4 text-gray-400">Không có dữ liệu</td></tr>
+                <tr><td colSpan={8} className="text-center py-4 text-gray-400">Không có dữ liệu</td></tr>
               ) : (
                 bloodInventory.map((item, idx) => (
                   <tr key={item.bloodDetailId || idx} className="border-t hover:bg-red-50 transition-colors">
@@ -236,12 +302,42 @@ const BloodInventoryDetail = ({ bloodInventory, onClose, getHospitalName }) => {
                     <td className={`px-4 py-2 ${item.bloodDetailStatus === 'Còn hạn' ? 'text-green-600 font-semibold' : item.bloodDetailStatus === 'Hết hạn' ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>{item.bloodDetailStatus ?? <span className="text-gray-400">Chưa có</span>}</td>
                     <td className="px-4 py-2">{item.note ?? <span className="text-gray-400">Chưa có</span>}</td>
                     <td className="px-4 py-2">{getHospitalName ? getHospitalName(item.hospitalId) : (item.hospitalId ?? <span className="text-gray-400">Chưa có</span>)}</td>
+                    <td className="px-4 py-2">
+                      {item.bloodDetailId && item.bloodDetailStatus !== 'Đã sử dụng' && item.bloodDetailStatus !== 'Hết hạn' && (
+                        <button
+                          onClick={() => handleMarkAsExpired(item.bloodDetailId)}
+                          disabled={loadingStates[item.bloodDetailId]}
+                          className="px-2 py-1 bg-orange-500 text-white rounded text-xs hover:bg-orange-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center space-x-1"
+                        >
+                          {loadingStates[item.bloodDetailId] ? (
+                            <>
+                              <div className="w-2 h-2 border border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Đang xử lý...</span>
+                            </>
+                          ) : (
+                            <>
+                              <FaClock className="text-xs" />
+                              <span>Đánh dấu hết hạn</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
+        
+        {/* Toast Notification */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
       </div>
     </div>
   );

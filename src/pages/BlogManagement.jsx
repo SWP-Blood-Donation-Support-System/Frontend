@@ -66,7 +66,7 @@ const BlogManagement = () => {
       const data = await getAllBlogPosts();
       setBlogs(data);
     } catch (err) {
-      setError(err.message || 'Lỗi tải danh sách blog');
+      console.error('Error fetching blogs:', err);
     } finally {
       setLoading(false);
     }
@@ -387,13 +387,12 @@ const BlogManagement = () => {
                 </label>
                 <ImageUpload
                   value={formData.blogImage}
-                  onChange={(url) => {
+                  onImageChange={(url) => {
                     setFormData(prev => ({ ...prev, blogImage: url }));
                     const fieldError = validateField('blogImage', url);
                     setErrors(prev => ({ ...prev, blogImage: fieldError }));
                   }}
-                  placeholder="Kéo thả ảnh vào đây hoặc click để chọn file"
-                  disabled={isSubmitting}
+                  mode="base64"
                 />
                 {errors.blogImage && (
                   <p className="text-red-600 text-sm mt-1 flex items-center">

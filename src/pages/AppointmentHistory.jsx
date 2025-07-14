@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaClock, FaUser, FaHeartbeat, FaHistory, FaEye, FaCheckCircle, FaTimesCircle, FaTrash, FaRedo, FaCertificate, FaDownload } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaUser, FaHeartbeat, FaHistory, FaEye, FaCheckCircle, FaTimesCircle, FaTrash, FaRedo, FaCertificate, FaDownload, FaStar } from 'react-icons/fa';
 import { getAppointmentHistory, getUser, cancelAppointment, registerForEvent, submitSurveyAnswers } from '../utils/api';
 import Toast from '../components/Toast';
 import SurveyModal from '../components/SurveyModal';
 import SurveyAnswersModal from '../components/SurveyAnswersModal';
+import ReportModal from '../components/ReportModal';
 
 const AppointmentHistory = () => {
   const [appointments, setAppointments] = useState([]);
@@ -26,6 +27,8 @@ const AppointmentHistory = () => {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('error');
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedAppointmentForReport, setSelectedAppointmentForReport] = useState(null);
 
   useEffect(() => {
     const currentUser = getUser();
@@ -50,12 +53,11 @@ const AppointmentHistory = () => {
     } catch (err) {
       // Only show error if it's not about empty appointment history
       if (err.message && !err.message.toLowerCase().includes('no appointment history found')) {
-        setError(err.message || 'Không thể tải lịch sử lịch hẹn. Vui lòng thử lại.');
+        console.error('Error fetching appointment history:', err);
       } else {
         // If it's about no appointments found, just set empty array without error
         setAppointments([]);
       }
-      console.error('Error fetching appointment history:', err);
     } finally {
       setLoading(false);
     }
@@ -215,7 +217,6 @@ const AppointmentHistory = () => {
         setError(errorMessage || 'Bạn chưa đủ điều kiện đăng ký lại trực tuyến.');
       }
     } catch (err) {
-      setError('Không thể gửi khảo sát. Vui lòng thử lại.');
       console.error('Error submitting survey:', err);
     } finally {
       setReregisteringAppointments(prev => {
@@ -345,6 +346,18 @@ const AppointmentHistory = () => {
     return reregisteringAppointments.has(appointmentId);
   };
 
+  const canViewSurveyAnswers = (status) => {
+    // Chỉ hiển thị nút khảo sát cho những cuộc hẹn chưa được duyệt hoặc chưa hoàn thành
+    const validStatuses = [
+      'Đã đăng ký',
+      'Chờ xử lý',
+      'Chờ duyệt',
+      'Đã duyệt',
+      'Đã từ chối'
+    ];
+    return validStatuses.includes(status);
+  };
+
   const openAppointmentDetail = (appointment) => {
     setSelectedAppointment(appointment);
     setShowModal(true);
@@ -358,6 +371,23 @@ const AppointmentHistory = () => {
   const closeSurveyAnswers = () => {
     setShowSurveyAnswers(false);
     setSelectedAppointmentForSurvey(null);
+  };
+
+  const openReportModal = (appointment) => {
+    setSelectedAppointmentForReport(appointment);
+    setShowReportModal(true);
+  };
+
+  const closeReportModal = () => {
+    setShowReportModal(false);
+    setSelectedAppointmentForReport(null);
+  };
+
+  const handleReportSuccess = () => {
+    // Có thể refresh data hoặc hiển thị thông báo
+    setToastMessage('Đã gửi đánh giá thành công!');
+    setToastType('success');
+    setShowToast(true);
   };
 
   const isStaffOrAdmin = () => {
@@ -442,6 +472,14 @@ const AppointmentHistory = () => {
         <SurveyAnswersModal
           appointmentId={selectedAppointmentForSurvey}
           onClose={closeSurveyAnswers}
+        />
+      )}
+
+      {showReportModal && selectedAppointmentForReport && (
+        <ReportModal
+          appointment={selectedAppointmentForReport}
+          onClose={closeReportModal}
+          onSuccess={handleReportSuccess}
         />
       )}
 
@@ -669,7 +707,7 @@ const AppointmentHistory = () => {
                         <FaEye className="text-sm" />
                       </button>
                       
-                      {isStaffOrAdmin() && (
+                      {isStaffOrAdmin() && canViewSurveyAnswers(appointment.appointmentStatus) && (
                         <button
                           onClick={() => openSurveyAnswers(appointment)}
                           className="px-3 py-1 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md transition-colors duration-200"
@@ -716,13 +754,22 @@ const AppointmentHistory = () => {
                       )}
 
                       {appointment.appointmentStatus === 'Đã hiến' ? (
-                        <button
-                          onClick={() => handleShowCertificate(appointment.appointmentId || appointment.id)}
-                          className="p-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 rounded-lg transition-colors duration-200"
-                          title="Xem chứng nhận hiến máu"
-                        >
-                          <FaCertificate className="text-sm" />
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleShowCertificate(appointment.appointmentId || appointment.id)}
+                            className="p-2 text-yellow-600 hover:text-yellow-700 hover:bg-yellow-50 rounded-lg transition-colors duration-200"
+                            title="Xem chứng nhận hiến máu"
+                          >
+                            <FaCertificate className="text-sm" />
+                          </button>
+                          <button
+                            onClick={() => openReportModal(appointment)}
+                            className="p-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors duration-200"
+                            title="Viết đánh giá"
+                          >
+                            <FaStar className="text-sm" />
+                          </button>
+                        </>
                       ) : null}
                     </div>
                   </div>

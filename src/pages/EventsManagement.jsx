@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaPlus, FaEdit, FaTrash, FaSpinner, FaSearch, FaFilter, FaExclamationTriangle, FaCheck } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaPlus, FaEdit, FaTrash, FaSpinner, FaSearch, FaFilter, FaExclamationTriangle, FaCheck, FaHospital, FaChevronDown } from 'react-icons/fa';
 import { getEvents, createEvent, updateEvent, deleteEvent } from '../utils/api';
 import Toast from '../components/Toast';
 
 const EventsManagement = () => {
   const [events, setEvents] = useState([]);
+  const [hospitals, setHospitals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
@@ -16,6 +17,7 @@ const EventsManagement = () => {
   const [deletingEvent, setDeletingEvent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [showHospitalDropdown, setShowHospitalDropdown] = useState(false);
   
   const [formData, setFormData] = useState({
     eventDate: '',
@@ -29,6 +31,19 @@ const EventsManagement = () => {
   // Validation state
   const [errors, setErrors] = useState({});
   const [touched, setTouched] = useState({});
+
+  // Fetch hospitals
+  const fetchHospitals = async () => {
+    try {
+      const response = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Hospital/GetAll');
+      if (response.ok) {
+        const data = await response.json();
+        setHospitals(data || []);
+      }
+    } catch (err) {
+      console.error('Error fetching hospitals:', err);
+    }
+  };
 
   // Validation functions
   const validateField = (name, value) => {
@@ -138,7 +153,22 @@ const EventsManagement = () => {
 
   useEffect(() => {
     fetchEvents();
+    fetchHospitals();
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showHospitalDropdown && !event.target.closest('.hospital-dropdown')) {
+        setShowHospitalDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showHospitalDropdown]);
 
   const fetchEvents = async () => {
     try {
@@ -146,7 +176,6 @@ const EventsManagement = () => {
       const eventsData = await getEvents();
       setEvents(eventsData);
     } catch (err) {
-      setError('Không thể tải danh sách sự kiện. Vui lòng thử lại.');
       console.error('Error fetching events:', err);
     } finally {
       setLoading(false);
@@ -686,16 +715,49 @@ const EventsManagement = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Địa điểm <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="text"
-                      name="location"
-                      value={formData.location}
-                      onChange={handleInputChange}
-                      onBlur={handleBlur}
-                      className={getFieldClassName('location')}
-                      placeholder="Nhập địa điểm"
-                      required
-                    />
+                    <div className="relative hospital-dropdown">
+                      <input
+                        type="text"
+                        name="location"
+                        value={formData.location}
+                        onChange={handleInputChange}
+                        onBlur={handleBlur}
+                        onFocus={() => setShowHospitalDropdown(true)}
+                        className={getFieldClassName('location')}
+                        placeholder="Nhập địa điểm hoặc chọn bệnh viện"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowHospitalDropdown(!showHospitalDropdown)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <FaChevronDown className={`transition-transform ${showHospitalDropdown ? 'rotate-180' : ''}`} />
+                      </button>
+                      
+                      {/* Hospital Dropdown */}
+                      {showHospitalDropdown && hospitals.length > 0 && (
+                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                          <div className="p-2">
+                            <div className="text-xs font-medium text-gray-500 mb-2 px-2">Chọn bệnh viện:</div>
+                            {hospitals.map((hospital) => (
+                              <button
+                                key={hospital.id || hospital.hospitalId}
+                                type="button"
+                                onClick={() => {
+                                  setFormData(prev => ({ ...prev, location: hospital.name || hospital.hospitalName }));
+                                  setShowHospitalDropdown(false);
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-100 rounded-md flex items-center"
+                              >
+                                <FaHospital className="text-red-500 mr-2 flex-shrink-0" />
+                                <span>{hospital.name || hospital.hospitalName}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                     {touched.location && errors.location && (
                       <p className="text-red-500 text-xs mt-1"><FaExclamationTriangle className="inline mr-1" /> {errors.location}</p>
                     )}

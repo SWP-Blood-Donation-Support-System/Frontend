@@ -775,6 +775,8 @@ export const getAllReports = async () => {
       throw new Error('Bạn cần đăng nhập để xem báo cáo');
     }
 
+    console.log('Getting all reports');
+
     const response = await fetch(`${API_BASE_URL}/Report/GetAllReports`, {
       method: 'GET',
       headers: {
@@ -783,15 +785,29 @@ export const getAllReports = async () => {
       }
     });
 
+    console.log('Get all reports response status:', response.status);
+
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Failed to fetch reports: ${response.status}`);
+      console.error('Get all reports error response:', errorData);
+      
+      // Handle specific error cases
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu yêu cầu không hợp lệ');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy báo cáo');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi lấy báo cáo: ${response.status}`);
+      }
     }
 
     const data = await response.json();
+    console.log('Get all reports successful:', data);
     return data;
   } catch (error) {
-    console.error('Error fetching reports:', error);
+    console.error('Error getting all reports:', error);
     throw error;
   }
 };
@@ -1468,6 +1484,239 @@ export const updateNote = async (appointmentId, reasonCode, customNote) => {
     return await response.json();
   } catch (error) {
     console.error('Error updating note:', error);
+    throw error;
+  }
+}; 
+
+// Mark blood as expired
+export const markBloodAsExpired = async (bloodDetailId) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để thực hiện thao tác này');
+    }
+
+    console.log('Marking blood as expired:', bloodDetailId);
+
+    const response = await fetch(`${API_BASE_URL}/blood-inventory/expire`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        bloodDetailId: bloodDetailId
+      })
+    });
+
+    console.log('Mark blood as expired response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Mark blood as expired error response:', errorData);
+      
+      // Handle specific error cases
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu yêu cầu không hợp lệ');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy đơn vị máu');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi đánh dấu máu hết hạn: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Mark blood as expired successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error marking blood as expired:', error);
+    throw error;
+  }
+}; 
+
+// Create report
+export const createReport = async (reportType, reportContent) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để tạo báo cáo');
+    }
+
+    console.log('Creating report:', { reportType, reportContent });
+
+    const response = await fetch(`${API_BASE_URL}/Report/CreateReport`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        reportType: reportType,
+        reportContent: reportContent
+      })
+    });
+
+    console.log('Create report response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Create report error response:', errorData);
+      
+      // Handle specific error cases
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu yêu cầu không hợp lệ');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy tài nguyên');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi tạo báo cáo: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Create report successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error creating report:', error);
+    throw error;
+  }
+}; 
+
+// Get user profile from server
+export const getUserProfile = async () => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để lấy thông tin người dùng');
+    }
+
+    console.log('Getting user profile from server');
+
+    const response = await fetch(`${API_BASE_URL}/User/profile`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    console.log('Get user profile response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Get user profile error response:', errorData);
+      
+      // Handle specific error cases
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu yêu cầu không hợp lệ');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy người dùng');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi lấy thông tin người dùng: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Get user profile successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error getting user profile:', error);
+    throw error;
+  }
+};
+
+// Update user profile
+export const updateUserProfile = async (profileData) => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để cập nhật thông tin');
+    }
+
+    console.log('Updating user profile:', profileData);
+
+    const response = await fetch(`${API_BASE_URL}/User/update-profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(profileData)
+    });
+
+    console.log('Update user profile response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Update user profile error response:', errorData);
+      
+      // Handle specific error cases
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu yêu cầu không hợp lệ');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy người dùng');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi cập nhật thông tin: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Update user profile successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    throw error;
+  }
+};
+
+// Get user reports
+export const getUserReports = async () => {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Bạn cần đăng nhập để xem báo cáo');
+    }
+
+    console.log('Getting user reports');
+
+    const response = await fetch(`${API_BASE_URL}/Report/GetMyReports`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+
+    console.log('Get user reports response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Get user reports error response:', errorData);
+      
+      // Handle specific error cases
+      if (response.status === 400) {
+        throw new Error(errorData.message || 'Dữ liệu yêu cầu không hợp lệ');
+      } else if (response.status === 404) {
+        throw new Error('Không tìm thấy báo cáo');
+      } else if (response.status === 500) {
+        throw new Error('Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else {
+        throw new Error(errorData.message || `Lỗi lấy báo cáo: ${response.status}`);
+      }
+    }
+
+    const data = await response.json();
+    console.log('Get user reports successful:', data);
+    return data;
+  } catch (error) {
+    console.error('Error getting user reports:', error);
     throw error;
   }
 }; 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaRegCalendarCheck, FaCheckCircle } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaRegCalendarCheck, FaCheckCircle, FaSearch } from 'react-icons/fa';
 import { getEvents, getUser, registerAppointmentWithSurvey, getUserRegisteredEvents } from '../utils/api';
 import Toast from '../components/Toast';
 import SurveyModal from '../components/SurveyModal';
@@ -16,6 +16,7 @@ const Events = () => {
   const [showSurvey, setShowSurvey] = useState(false);
   const [pendingRegister, setPendingRegister] = useState(null); // {eventId, eventTitle}
   const [surveyError, setSurveyError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchEvents();
@@ -24,13 +25,12 @@ const Events = () => {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const eventsData = await getEvents();
-      setEvents(eventsData);
+      const data = await getEvents();
+      setEvents(data);
       
       // Fetch user's registered events
       await fetchUserRegisteredEvents();
     } catch (err) {
-      setError('Không thể tải danh sách sự kiện. Vui lòng thử lại.');
       console.error('Error fetching events:', err);
     } finally {
       setLoading(false);
@@ -74,8 +74,9 @@ const Events = () => {
       setSurveyQuestions(questions);
       setShowSurvey(true);
       setPendingRegister({ eventId, eventTitle });
+      setSurveyError(''); // Xóa lỗi cũ khi bắt đầu đăng ký mới
     } catch {
-      setError('Không thể tải khảo sát. Vui lòng thử lại.');
+      console.error('Error loading survey');
       setRegisteringEvents(prev => {
         const newSet = new Set(prev);
         newSet.delete(eventId);
@@ -197,16 +198,22 @@ const Events = () => {
         }
         setShowSuccess(true);
         setRegisteredEventIds(prev => new Set(prev).add(pendingRegister.eventId));
+        setPendingRegister(null); // Xóa pendingRegister khi thành công
         
         // Refresh danh sách sự kiện đã đăng ký từ server
         await fetchUserRegisteredEvents();
       } catch (err) {
-        // Kiểm tra nếu đây là thông báo về lịch hẹn đã được duyệt
+        // Kiểm tra các trường hợp đặc biệt từ API
         if (err.message && err.message.includes('Bạn đã có một lịch hẹn đã được duyệt và đủ điều kiện')) {
           setSuccessMessage(err.message);
           setShowSuccess(true);
+          setPendingRegister(null); // Xóa pendingRegister khi thành công
           // Refresh danh sách sự kiện đã đăng ký từ server
           await fetchUserRegisteredEvents();
+        } else if (err.message && err.message.includes('Tài khoản của bạn không đủ điều kiện đăng ký lịch hẹn')) {
+          setSuccessMessage('Bạn đã hiến máu trong 9 tháng gần đây. Vui lòng quay lại sau hoặc liên hệ nhân viên để biết thêm thông tin.');
+          setShowSuccess(true);
+          setPendingRegister(null); // Xóa pendingRegister khi thành công
         } else {
           setError(err.message || 'Không thể đăng ký sự kiện. Vui lòng thử lại.');
         }
@@ -220,7 +227,7 @@ const Events = () => {
         if (pendingRegister?.eventId) newSet.delete(pendingRegister.eventId);
         return newSet;
       });
-      setPendingRegister(null);
+      // Không xóa pendingRegister ở đây để giữ eventId cho lần submit tiếp theo
       // Không xóa surveyError ở đây để giữ thông báo lỗi validation
     }
   };
@@ -239,10 +246,13 @@ const Events = () => {
     return timeString.substring(0, 5); // Remove seconds
   };
 
-  const isEventUpcoming = (eventDate) => {
-    const today = new Date();
-    const eventDateObj = new Date(eventDate);
-    return eventDateObj > today;
+  const isEventUpcoming = (eventDate, eventTime) => {
+    const now = new Date();
+    const eventDateTime = new Date(eventDate + 'T' + eventTime);
+    
+    // Sự kiện được coi là "upcoming" nếu còn ít nhất 1 giờ trước khi bắt đầu
+    const oneHourBefore = new Date(eventDateTime.getTime() - (60 * 60 * 1000));
+    return now < oneHourBefore;
   };
 
   const isRegistering = (eventId) => {
@@ -252,6 +262,18 @@ const Events = () => {
   const isEventRegistered = (eventId) => {
     return registeredEventIds.has(eventId);
   };
+
+  // Filter events based on search term
+  const filteredEvents = events.filter(event => {
+    if (!searchTerm.trim()) return true;
+    
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      event.eventTitle?.toLowerCase().includes(searchLower) ||
+      event.eventContent?.toLowerCase().includes(searchLower) ||
+      event.location?.toLowerCase().includes(searchLower)
+    );
+  });
 
   if (loading) {
     return (
@@ -284,7 +306,7 @@ const Events = () => {
               if (pendingRegister?.eventId) newSet.delete(pendingRegister.eventId);
               return newSet;
             });
-            setPendingRegister(null);
+            // Không xóa pendingRegister để giữ eventId cho lần submit tiếp theo
             setSurveyError('');
           }}
           errorMessage={surveyError}
@@ -307,6 +329,24 @@ const Events = () => {
           </p>
         </div>
 
+        {/* Search Bar */}
+        <div className="mb-8">
+          <div className="max-w-md mx-auto">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <FaSearch className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Tìm kiếm sự kiện theo tên, địa điểm..."
+                className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-red-500 focus:border-red-500 transition-colors duration-200"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Error Message */}
         {error && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded-md mb-8 animate-shake">
@@ -325,11 +365,11 @@ const Events = () => {
 
         {/* Events Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {events.map((event) => (
+          {filteredEvents.map((event) => (
             <div
               key={event.eventId}
               className={`bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105 ${
-                !isEventUpcoming(event.eventDate) ? 'opacity-60' : ''
+                !isEventUpcoming(event.eventDate, event.eventTime) ? 'opacity-60' : ''
               }`}
             >
               {/* Event Header */}
@@ -372,7 +412,7 @@ const Events = () => {
                       <FaCheckCircle className="mr-2" />
                       Đã đăng ký
                     </div>
-                  ) : !isEventUpcoming(event.eventDate) ? (
+                  ) : !isEventUpcoming(event.eventDate, event.eventTime) ? (
                     <div className="w-full bg-gray-300 text-gray-600 font-medium py-3 px-4 rounded-lg text-center">
                       Sự kiện đã kết thúc
                     </div>
@@ -405,16 +445,19 @@ const Events = () => {
         </div>
 
         {/* Empty State */}
-        {events.length === 0 && !loading && (
+        {filteredEvents.length === 0 && !loading && (
           <div className="text-center py-12">
             <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
               <FaCalendarAlt className="text-gray-400 text-3xl" />
             </div>
             <h3 className="text-xl font-medium text-gray-900 mb-2">
-              Chưa có sự kiện nào
+              {searchTerm ? 'Không tìm thấy sự kiện phù hợp' : 'Chưa có sự kiện nào'}
             </h3>
             <p className="text-gray-600">
-              Hiện tại chưa có sự kiện hiến máu nào được lên lịch.
+              {searchTerm 
+                ? 'Thử thay đổi từ khóa tìm kiếm hoặc xóa bộ lọc để xem tất cả sự kiện.'
+                : 'Hiện tại chưa có sự kiện hiến máu nào được lên lịch.'
+              }
             </p>
           </div>
         )}
