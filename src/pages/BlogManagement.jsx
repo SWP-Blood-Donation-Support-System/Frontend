@@ -189,11 +189,6 @@ const BlogManagement = () => {
     }
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('vi-VN');
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
@@ -351,10 +346,6 @@ const BlogManagement = () => {
                   </p>
                   
                   <div className="space-y-2 mb-4">
-                    <div className="flex items-center text-sm text-gray-500">
-                      <FaCalendarAlt className="mr-2" />
-                      {formatDate(blog.createdDate)}
-                    </div>
                     <div className="flex items-center text-sm text-gray-500">
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         blog.blogStatus === 'available' ? 'bg-green-100 text-green-800' :

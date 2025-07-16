@@ -348,8 +348,8 @@ const Events = () => {
   // Sort events
   filteredEvents = filteredEvents.sort((a, b) => {
     if (sortField === 'eventDate') {
-      // Ngày gần nhất lên đầu (giảm dần)
-      return new Date(b.eventDate) - new Date(a.eventDate);
+      // Ngày gần nhất lên đầu (tăng dần)
+      return new Date(a.eventDate) - new Date(b.eventDate);
     } else if (sortField === 'bloodTypeRequired') {
       // Sort theo nhóm máu (A+ -> O-)
       const bloodOrder = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];

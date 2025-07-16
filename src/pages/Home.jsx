@@ -238,10 +238,6 @@ const Home = () => {
                          blog.blogStatus === 'draft' ? 'Bản nháp' :
                          blog.blogStatus === 'archived' ? 'Đã lưu trữ' : blog.blogStatus}
                       </span>
-                      <div className="flex items-center text-xs text-gray-500">
-                        <FaCalendarAlt className="mr-1" />
-                        {formatDate(blog.createdDate)}
-                      </div>
                     </div>
 
                     <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2 hover:text-red-600 transition-colors duration-200">
@@ -327,10 +323,6 @@ const Home = () => {
                     {selectedBlog.blogTitle || 'Chi tiết bài viết'}
                   </h2>
                   <div className="flex items-center space-x-4 flex-wrap">
-                    <div className="flex items-center text-sm text-gray-500">
-                      <FaCalendarAlt className="mr-2" />
-                      {formatDate(selectedBlog.createdDate)}
-                    </div>
                     <span className={`px-3 py-1 text-sm rounded-full font-medium ${
                       selectedBlog.blogStatus === 'available' ? 'bg-green-100 text-green-800' :
                       selectedBlog.blogStatus === 'draft' ? 'bg-yellow-100 text-yellow-800' :

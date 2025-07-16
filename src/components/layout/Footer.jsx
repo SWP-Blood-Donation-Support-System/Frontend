@@ -8,9 +8,8 @@ const Footer = () => {
     { name: 'Nhóm máu', path: '/blood-types' },
     { name: 'Đăng ký hiến máu', path: '/register' },
     { name: 'Tìm kiếm máu', path: '/blood-search' },
-    { name: 'Cấp cứu', path: '/emergency' },
-    { name: 'Về chúng tôi', path: '/about' },
-    { name: 'Liên hệ', path: '/contact' },
+   
+  
   ];
 
   const socialLinks = [
@@ -108,25 +107,7 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Newsletter */}
-          <div>
-            <h3 className="text-xl font-bold mb-6 text-white">Đăng ký nhận tin</h3>
-            <p className="text-gray-300 mb-4">
-              Nhận thông tin mới nhất về các sự kiện hiến máu và tin tức y tế.
-            </p>
-            <div className="space-y-3">
-              <input
-                type="email"
-                placeholder="Email của bạn"
-                className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
-              />
-              <button
-                className="w-full px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg transition-all duration-200 transform hover:-translate-y-1 shadow-lg hover:shadow-xl hover:scale-105"
-              >
-                Đăng ký
-              </button>
-            </div>
-          </div>
+        
         </div>
 
         {/* Bottom Bar */}
