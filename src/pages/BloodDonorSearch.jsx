@@ -23,28 +23,15 @@ const BloodDonorSearch = () => {
     }
     
     try {
-      let response;
       const axiosConfig = {
         headers: { 
           'Cache-Control': 'no-cache',
           'Authorization': `Bearer ${token}`
         }
       };
-      if (bloodType) {
-        response = await axios.get(
-          '/api/Search/requests/byBloodType',
-          {
-            ...axiosConfig,
-            params: { bloodType }
-          }
-        );
-      } else {
-        response = await axios.get(
-          '/api/Search/requests/byBloodType',
-          axiosConfig
-        );
-      }
-      setSearchResults(response.data || []);
+      // Gọi đúng API người hiến máu
+      const response = await axios.get('/api/Search/donors/all', axiosConfig);
+      setSearchResults(response.data.donors || []);
     } catch {
       setError('Có lỗi xảy ra khi tìm kiếm.');
       setSearchResults([]);
@@ -113,40 +100,42 @@ const BloodDonorSearch = () => {
         {searchResults.length === 0 && !loading && (
           <div className="text-center text-gray-500">Không có kết quả phù hợp.</div>
         )}
-        {searchResults.map((result) => (
-          <div key={result.id} className="card">
+        {searchResults.map((donor) => (
+          <div key={donor.username} className="card">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
               <div className="flex-1">
-                <h3 className="text-xl font-semibold mb-2">{result.name}</h3>
+                <h3 className="text-xl font-semibold mb-2">{donor.fullName}</h3>
                 <div className="space-y-2">
                   <div className="flex items-center text-gray-600">
                     <FaTint className="mr-2" />
-                    <span>Nhóm máu: {result.bloodType}</span>
+                    <span>Nhóm máu: {donor.bloodType}</span>
                   </div>
                   <div className="flex items-center text-gray-600">
                     <FaMapMarkerAlt className="mr-2" />
-                    <span>{result.location} ({result.distance} km)</span>
+                    <span>{donor.address} ({donor.distance})</span>
                   </div>
                   <div className="text-gray-600">
-                    Lần hiến máu gần nhất: {result.lastDonation}
+                    Lần hiến máu gần nhất: {donor.lastDonationDate ? new Date(donor.lastDonationDate).toLocaleDateString('vi-VN') : 'Chưa có'}
+                  </div>
+                  <div className="text-gray-600">
+                    Tổng số lần hiến: {donor.totalDonations}
+                  </div>
+                  <div className="text-gray-600">
+                    Trạng thái: {donor.profileStatus}
+                  </div>
+                  <div className="text-gray-600">
+                    Username: {donor.username}
                   </div>
                 </div>
               </div>
-
               <div className="mt-4 md:mt-0 md:ml-4 space-y-2">
-                <a
-                  href={`tel:${result.contact?.phone}`}
-                  className="flex items-center text-gray-600 hover:text-primary-600"
-                >
+                <a href={`tel:${donor.phone}`} className="flex items-center text-gray-600 hover:text-primary-600">
                   <FaPhone className="mr-2" />
-                  {result.contact?.phone}
+                  {donor.phone}
                 </a>
-                <a
-                  href={`mailto:${result.contact?.email}`}
-                  className="flex items-center text-gray-600 hover:text-primary-600"
-                >
+                <a href={`mailto:${donor.email}`} className="flex items-center text-gray-600 hover:text-primary-600">
                   <FaEnvelope className="mr-2" />
-                  {result.contact?.email}
+                  {donor.email}
                 </a>
               </div>
             </div>

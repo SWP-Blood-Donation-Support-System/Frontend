@@ -32,23 +32,18 @@ const Login = () => {
     try {
       const data = await loginUser(formData.username, formData.password);
       
-      // Lưu token và user data
       if (data.token) {
         setAuthToken(data.token);
-        console.log('Token saved:', data.token);
       }
       if (data.user) {
         setUser(data.user);
-        console.log('User data saved:', data.user);
       }
       
       console.log('Login successful:', data);
       setShowSuccess(true);
       
-      // Dispatch custom event to notify navbar and other components
       window.dispatchEvent(new Event('authStateChanged'));
       
-      // Chuyển hướng sau khi hiển thị thông báo thành công
       setTimeout(() => {
         navigate('/dashboard');
       }, 1500);

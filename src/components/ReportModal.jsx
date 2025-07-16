@@ -25,7 +25,6 @@ const ReportModal = ({ appointment, onClose, onSuccess }) => {
     setLoading(true);
 
     try {
-      // Tạo nội dung report với rating
       const fullContent = `Đánh giá: ${rating}/5 sao\n\n${reportContent}`;
       
       await createReport('DonationReview', fullContent);

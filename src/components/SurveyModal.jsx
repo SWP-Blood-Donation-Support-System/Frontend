@@ -4,7 +4,6 @@ const SurveyModal = ({ questions, onSubmit, onClose, errorMessage }) => {
   const [answers, setAnswers] = useState({});
 
   const handleChange = (question, option, checked, textValue) => {
-    console.log('handleChange:', { questionId: question.questionId, optionId: option.optionId, checked, questionType: question.questionType });
     setAnswers(prev => {
       let newAns = { ...prev };
       if (question.questionType === 'single') {
@@ -26,7 +25,6 @@ const SurveyModal = ({ questions, onSubmit, onClose, errorMessage }) => {
           ...newAns[question.questionId],
           options: arr 
         };
-        console.log('Multiple choice updated:', newAns[question.questionId]);
       }
       return newAns;
     });
@@ -73,7 +71,6 @@ const SurveyModal = ({ questions, onSubmit, onClose, errorMessage }) => {
                         type="checkbox"
                         checked={answers[q.questionId]?.options?.includes(opt.optionId) || false}
                         onChange={e => {
-                          console.log('Checkbox changed:', { questionId: q.questionId, optionId: opt.optionId, checked: e.target.checked });
                           handleChange(q, opt, e.target.checked);
                         }}
                         className="mr-2"

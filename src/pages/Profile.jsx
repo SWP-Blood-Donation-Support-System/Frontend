@@ -27,17 +27,15 @@ const Profile = () => {
         }
       } catch (error) {
         console.error('Error fetching user profile:', error);
-        // Fallback to localStorage if API fails
         const localUser = getUser();
         if (localUser) {
           setUserData(localUser);
           console.log('Using user data from localStorage:', localUser);
-    }
+        }
       } finally {
-    setLoading(false);
+        setLoading(false);
       }
     };
-
     fetchUserData();
     fetchUserReports();
   }, []);
@@ -65,7 +63,7 @@ const Profile = () => {
         phone: data.phone,
         address: data.address,
         bloodType: data.bloodType,
-        profileStatus: 'Active'
+        profileStatus: userData.profileStatus === 'Đang nghỉ ngơi' ? 'Đang nghỉ ngơi' : (data.profileStatus === 'Không sẵn sàng hiến máu' ? 'Không sẵn sàng hiến máu' : data.profileStatus)
       };
 
       await updateUserProfile(profileData);
@@ -322,6 +320,27 @@ const Profile = () => {
                 </div>
                 {errors.bloodType && (
                   <p className="mt-1 text-sm text-red-600">{errors.bloodType.message}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Trạng thái hồ sơ <span className="text-red-500">*</span>
+                </label>
+                <select
+                  defaultValue={userData.profileStatus || 'Sẵn sàng hiến máu'}
+                  {...register('profileStatus', { required: 'Vui lòng chọn trạng thái hồ sơ' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  disabled={userData.profileStatus === 'Đang nghỉ ngơi'}
+                >
+                  <option value="Sẵn sàng hiến máu">Sẵn sàng hiến máu</option>
+                  <option value="Không sẵn sàng hiến máu">Không sẵn sàng hiến máu</option>
+                </select>
+                {userData.profileStatus === 'Đang nghỉ ngơi' && (
+                  <p className="mt-1 text-xs text-yellow-600">Bạn đang trong thời gian nghỉ ngơi, không thể thay đổi trạng thái này.</p>
+                )}
+                {errors.profileStatus && (
+                  <p className="mt-1 text-sm text-red-600">{errors.profileStatus.message}</p>
                 )}
               </div>
             </div>

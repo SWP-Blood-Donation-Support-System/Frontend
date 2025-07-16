@@ -29,7 +29,6 @@ const EmergencyManagement = () => {
       fetchEmergencies();
       fetchHospitals();
     }
-    // eslint-disable-next-line
   }, []);
 
   const fetchHospitals = async () => {

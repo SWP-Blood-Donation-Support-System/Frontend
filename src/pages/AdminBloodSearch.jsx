@@ -24,7 +24,6 @@ const AdminBloodSearch = () => {
   const fetchData = async () => {
     setLoading(true);
     setError('');
-    
     try {
       if (activeTab === 'requests') {
         await fetchRequests();
@@ -61,7 +60,6 @@ const AdminBloodSearch = () => {
 
       const data = await response.json();
       console.log('Requests data:', data);
-      // API trả về object có bloodRequests array
       const requestsData = data.bloodRequests || data || [];
       setRequests(Array.isArray(requestsData) ? requestsData : []);
     } catch (err) {
@@ -77,27 +75,20 @@ const AdminBloodSearch = () => {
       if (!token) {
         throw new Error('Không có token xác thực');
       }
-
       const response = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Search/donors/all', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('API Error:', response.status, errorText);
         throw new Error(`Lỗi API: ${response.status} - ${errorText}`);
       }
-
       const data = await response.json();
-      console.log('Donors data:', data);
-      // API trả về object có bloodDonors array hoặc trực tiếp array
-      const donorsData = data.bloodDonors || data || [];
-      setDonors(Array.isArray(donorsData) ? donorsData : []);
+      const donorsData = Array.isArray(data.donors) ? data.donors : (Array.isArray(data.bloodDonors) ? data.bloodDonors : []);
+      setDonors(donorsData);
     } catch (err) {
-      console.error('Error fetching donors:', err);
       setError(`Lỗi tải danh sách người hiến máu: ${err.message}`);
       setDonors([]);
     }
@@ -123,7 +114,6 @@ const AdminBloodSearch = () => {
 
       switch (filters.sortBy) {
         case 'distance': {
-          // Xử lý distance có thể là string "10 km" hoặc number
           const aDistance = typeof a.distance === 'string' ? parseFloat(a.distance) : (a.distance || 0);
           const bDistance = typeof b.distance === 'string' ? parseFloat(b.distance) : (b.distance || 0);
           aValue = isNaN(aDistance) ? 0 : aDistance;
@@ -165,35 +155,6 @@ const AdminBloodSearch = () => {
 
       return matchesBloodType && matchesLocation;
     });
-  };
-
-  const formatDistance = (distance) => {
-    if (!distance && distance !== 0) return 'N/A';
-    if (distance < 1) return `${(distance * 1000).toFixed(0)}m`;
-    return `${distance.toFixed(1)}km`;
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    try {
-      return new Date(dateString).toLocaleDateString('vi-VN');
-    } catch {
-      return 'N/A';
-    }
-  };
-
-  const getBloodTypeColor = (bloodType) => {
-    const colors = {
-      'A+': 'bg-red-100 text-red-800',
-      'A-': 'bg-red-50 text-red-700',
-      'B+': 'bg-blue-100 text-blue-800',
-      'B-': 'bg-blue-50 text-blue-700',
-      'AB+': 'bg-purple-100 text-purple-800',
-      'AB-': 'bg-purple-50 text-purple-700',
-      'O+': 'bg-green-100 text-green-800',
-      'O-': 'bg-green-50 text-green-700'
-    };
-    return colors[bloodType] || 'bg-gray-100 text-gray-800';
   };
 
   const currentData = activeTab === 'requests' ? requests : donors;
@@ -311,7 +272,7 @@ const AdminBloodSearch = () => {
           <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
         )}
 
-        {/* Content */}
+        {/* Content: chỉ hiện 1 bảng theo tab */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-16">
@@ -335,135 +296,86 @@ const AdminBloodSearch = () => {
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Thông tin
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nhóm máu
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Bệnh viện
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Khoảng cách
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ngày
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Liên hệ
-                    </th>
-                    {activeTab === 'requests' && (
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Ghi chú
-                      </th>
-                    )}
-                  </tr>
+                  {activeTab === 'requests' ? (
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã đơn</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên bệnh nhân</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày yêu cầu</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhóm máu</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bệnh viện</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Địa chỉ BV</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Liên hệ</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khoảng cách</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Họ tên</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày sinh</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giới tính</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SĐT</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Địa chỉ</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhóm máu</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lần hiến gần nhất</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng số lần</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khoảng cách</th>
+                    </tr>
+                  )}
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedData.map((item, index) => (
-                    <tr key={index} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
-                            <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
-                              <FaUser className="text-red-600" />
+                  {activeTab === 'requests'
+                    ? sortedData.map((item, index) => (
+                        <tr key={item.emergencyId || item.id || index} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3">{item.emergencyId || item.id}</td>
+                          <td className="px-4 py-3">{item.patientName || 'Không có tên'}</td>
+                          <td className="px-4 py-3">{item.emergencyDate ? new Date(item.emergencyDate).toLocaleDateString('vi-VN') : ''}</td>
+                          <td className="px-4 py-3">{item.bloodType}</td>
+                          <td className="px-4 py-3">{item.requiredUnits} ml</td>
+                          <td className="px-4 py-3">{item.hospitalName}</td>
+                          <td className="px-4 py-3">{item.hospitalAddress}</td>
+                          <td className="px-4 py-3">
+                            <div className="space-y-1">
+                              <a href={`tel:${item.patientPhone}`} className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800">
+                                <FaPhone className="text-xs" />
+                                <span>{item.patientPhone}</span>
+                              </a>
+                              <a href={`mailto:${item.patientEmail}`} className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800">
+                                <FaEnvelope className="text-xs" />
+                                <span>{item.patientEmail}</span>
+                              </a>
                             </div>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {activeTab === 'requests' 
-                                ? item.patientName || item.fullName || item.username || 'N/A'
-                                : item.fullName || item.username || 'N/A'
-                              }
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {activeTab === 'requests' 
-                                ? `Cần ${item.requiredUnits || 0} đơn vị ${item.bloodType || ''}`
-                                : `Đã hiến ${item.totalDonations || 0} lần`
-                              }
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBloodTypeColor(item.bloodType)}`}>
-                          {item.bloodType || 'N/A'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{item.hospitalName || 'N/A'}</div>
-                        <div className="text-sm text-gray-500 flex items-center gap-1">
-                          <FaMapMarkerAlt className="text-xs" />
-                          {item.hospitalAddress || item.address || 'N/A'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {activeTab === 'requests' 
-                          ? item.distance || 'N/A'
-                          : formatDistance(item.distance)
-                        }
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(activeTab === 'requests' ? item.emergencyDate : item.lastDonationDate)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <div className="flex items-center gap-2">
-                          {activeTab === 'requests' ? (
-                            <>
-                              {item.patientPhone && (
-                                <a 
-                                  href={`tel:${item.patientPhone}`}
-                                  className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                                >
-                                  <FaPhone className="text-xs" />
-                                  {item.patientPhone}
-                                </a>
-                              )}
-                              {item.patientEmail && (
-                                <a 
-                                  href={`mailto:${item.patientEmail}`}
-                                  className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                                >
-                                  <FaEnvelope className="text-xs" />
-                                  {item.patientEmail}
-                                </a>
-                              )}
-                            </>
-                          ) : (
-                            <>
-                              {item.phone && (
-                                <a 
-                                  href={`tel:${item.phone}`}
-                                  className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                                >
-                                  <FaPhone className="text-xs" />
-                                  {item.phone}
-                                </a>
-                              )}
-                              {item.email && (
-                                <a 
-                                  href={`mailto:${item.email}`}
-                                  className="text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                                >
-                                  <FaEnvelope className="text-xs" />
-                                  {item.email}
-                                </a>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </td>
-                      {activeTab === 'requests' && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          <div className="max-w-xs truncate" title={item.emergencyNote}>
-                            {item.emergencyNote || 'N/A'}
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
+                          </td>
+                          <td className="px-4 py-3">{item.distance}</td>
+                          <td className="px-4 py-3">
+                            {item.urgency && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-yellow-100 text-yellow-800 border-yellow-200">
+                                <FaExclamationTriangle className="mr-1 text-xs" />
+                                {item.urgency}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    : sortedData.map((item, index) => (
+                        <tr key={index} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">{item.fullName}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{item.username}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{item.email}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{item.dateOfBirth ? new Date(item.dateOfBirth).toLocaleDateString('vi-VN') : ''}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{item.gender}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{item.phone}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{item.address}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{item.bloodType}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{item.profileStatus}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{item.lastDonationDate ? new Date(item.lastDonationDate).toLocaleDateString('vi-VN') : ''}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{item.totalDonations}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">{item.distance}</td>
+                        </tr>
+                      ))}
                 </tbody>
               </table>
             </div>
@@ -480,10 +392,6 @@ const AdminBloodSearch = () => {
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">{donors.length}</div>
               <div className="text-sm text-gray-600">Người hiến máu</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{sortedData.length}</div>
-              <div className="text-sm text-gray-600">Kết quả hiện tại</div>
             </div>
           </div>
         </div>

@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaCheckCircle, FaUserCheck, FaTint, FaClipboardList, FaArrowLeft, FaSpinner, FaEye, FaEdit } from 'react-icons/fa';
+import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaCheckCircle, FaUserCheck, FaTint, FaClipboardList, FaArrowLeft, FaSpinner, FaEye, FaEdit, FaSearch } from 'react-icons/fa';
 import { getEvents, getRegisteredParticipantsByEventId, recordDonation, checkinParticipant, updateNote } from '../utils/api';
 import Toast from '../components/Toast';
 import SurveyAnswersModal from '../components/SurveyAnswersModal';
@@ -30,6 +30,10 @@ const BloodDonationManagement = () => {
   const [reasonCode, setReasonCode] = useState('');
   const [customNote, setCustomNote] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortField, setSortField] = useState("fullName");
+  const [eventSearchTerm, setEventSearchTerm] = useState("");
+  const [eventSortField, setEventSortField] = useState("eventDate");
 
   useEffect(() => {
     fetchEvents();
@@ -185,6 +189,72 @@ const BloodDonationManagement = () => {
     return bloodTypeMap[bloodTypeId] || bloodTypeId;
   };
 
+  // Lọc và sắp xếp participants
+  const filteredParticipants = participants.filter((p) => {
+    const term = searchTerm.toLowerCase();
+    return (
+      (p.fullName && p.fullName.toLowerCase().includes(term)) ||
+      (p.username && p.username.toLowerCase().includes(term)) ||
+      (p.phoneNumber && p.phoneNumber.toLowerCase().includes(term)) ||
+      (p.phone && p.phone.toLowerCase().includes(term)) ||
+      (getBloodTypeName(p.bloodType) && getBloodTypeName(p.bloodType).toLowerCase().includes(term)) ||
+      (p.appointmentStatus && p.appointmentStatus.toLowerCase().includes(term))
+    );
+  });
+
+  const sortedParticipants = [...filteredParticipants].sort((a, b) => {
+    let aValue, bValue;
+    switch (sortField) {
+      case "fullName":
+        aValue = (a.fullName || a.username || "").toLowerCase();
+        bValue = (b.fullName || b.username || "").toLowerCase();
+        break;
+      case "bloodType":
+        aValue = getBloodTypeName(a.bloodType) || "";
+        bValue = getBloodTypeName(b.bloodType) || "";
+        break;
+      case "appointmentStatus":
+        aValue = a.appointmentStatus || "";
+        bValue = b.appointmentStatus || "";
+        break;
+      case "createdDate":
+        aValue = new Date(a.createdDate || 0);
+        bValue = new Date(b.createdDate || 0);
+        break;
+      default:
+        aValue = (a.fullName || a.username || "").toLowerCase();
+        bValue = (b.fullName || b.username || "").toLowerCase();
+    }
+    return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+  });
+
+  // Lọc và sắp xếp danh sách sự kiện
+  let filteredEvents = events.filter(event => {
+    if (!eventSearchTerm.trim()) return true;
+    const term = eventSearchTerm.toLowerCase();
+    return (
+      event.eventTitle?.toLowerCase().includes(term) ||
+      event.eventContent?.toLowerCase().includes(term) ||
+      event.location?.toLowerCase().includes(term)
+    );
+  });
+  filteredEvents = filteredEvents.sort((a, b) => {
+    if (eventSortField === 'eventDate') {
+      return new Date(a.eventDate) - new Date(b.eventDate); // Ngày gần nhất lên đầu
+    } else if (eventSortField === 'eventTitle') {
+      return (a.eventTitle || '').localeCompare(b.eventTitle || '');
+    } else if (eventSortField === 'bloodTypeRequired') {
+      const bloodOrder = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+      const idxA = bloodOrder.indexOf(a.bloodTypeRequired || '');
+      const idxB = bloodOrder.indexOf(b.bloodTypeRequired || '');
+      if (idxA === -1 && idxB === -1) return 0;
+      if (idxA === -1) return 1;
+      if (idxB === -1) return -1;
+      return idxA - idxB;
+    }
+    return 0;
+  });
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
@@ -225,64 +295,109 @@ const BloodDonationManagement = () => {
 
 
         {!selectedEvent ? (
-          /* Events List */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {events.map((event) => (
-              <div
-                key={event.eventId}
-                className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer flex flex-col h-full"
-                onClick={() => handleEventSelect(event)}
-              >
-                {/* Event Header */}
-                <div className="bg-gradient-to-r from-red-600 to-red-400 p-6 text-white">
-                  <h3 className="text-xl font-bold mb-2 line-clamp-2">{event.eventTitle}</h3>
-                  <p className="text-red-100 text-sm line-clamp-3">{event.eventContent}</p>
-                </div>
-
-                {/* Event Details */}
-                <div className="p-6 flex-1 flex flex-col">
-                  <div className="space-y-4 flex-1">
-                    <div className="flex items-center text-gray-600">
-                      <FaCalendarAlt className="text-red-500 mr-3 flex-shrink-0" />
-                      <span className="font-medium">{formatDate(event.eventDate)}</span>
-                    </div>
-
-                    <div className="flex items-center text-gray-600">
-                      <FaClock className="text-red-500 mr-3 flex-shrink-0" />
-                      <span>{formatTime(event.eventTime)}</span>
-                    </div>
-
-                    <div className="flex items-start text-gray-600">
-                      <FaMapMarkerAlt className="text-red-500 mr-3 mt-1 flex-shrink-0" />
-                      <span className="line-clamp-2">{event.location}</span>
-                    </div>
-
-                    <div className="flex items-center text-gray-600">
-                      <FaUsers className="text-red-500 mr-3 flex-shrink-0" />
-                      <span>Tối đa {event.maxParticipants} người tham gia</span>
-                    </div>
-
-                    <div className="flex items-center text-gray-600">
-                      <FaTint className="text-red-500 mr-3 flex-shrink-0" />
-                      <span>
-                        {event.bloodTypeRequired 
-                          ? `Nhóm máu: ${event.bloodTypeRequired}`
-                          : 'Tất cả nhóm máu'
-                        }
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <button className="w-full bg-gradient-to-r from-red-600 to-red-400 hover:from-red-700 hover:to-red-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center">
-                      <FaClipboardList className="mr-2" />
-                      Xem danh sách tham gia
-                    </button>
-                  </div>
-                </div>
+          <>
+            {/* Search & Sort Bar for Events */}
+            <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              {/* Search */}
+              <div className="relative w-full md:max-w-md">
+                <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <FaSearch className="h-5 w-5 text-gray-400" />
+                </span>
+                <input
+                  type="text"
+                  value={eventSearchTerm}
+                  onChange={e => setEventSearchTerm(e.target.value)}
+                  placeholder="Tìm kiếm sự kiện theo tên, địa điểm hoặc nội dung..."
+                  className="block w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-full leading-6 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all duration-300 text-base shadow-sm hover:shadow-md focus:shadow-lg"
+                />
               </div>
-            ))}
-          </div>
+              {/* Sort Buttons */}
+              <div className="flex gap-2 justify-center md:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setEventSortField('eventDate')}
+                  className={`px-5 py-2 rounded-full border-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
+                    ${eventSortField === 'eventDate' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
+                >
+                  Ngày gần nhất
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEventSortField('eventTitle')}
+                  className={`px-5 py-2 rounded-full border-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
+                    ${eventSortField === 'eventTitle' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
+                >
+                  Tên sự kiện
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEventSortField('bloodTypeRequired')}
+                  className={`px-5 py-2 rounded-full border-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
+                    ${eventSortField === 'bloodTypeRequired' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
+                >
+                  Nhóm máu
+                </button>
+              </div>
+            </div>
+            {/* Events List */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredEvents.map((event) => (
+                <div
+                  key={event.eventId}
+                  className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer flex flex-col h-full"
+                  onClick={() => handleEventSelect(event)}
+                >
+                  {/* Event Header */}
+                  <div className="bg-gradient-to-r from-red-600 to-red-400 p-6 text-white">
+                    <h3 className="text-xl font-bold mb-2 line-clamp-2">{event.eventTitle}</h3>
+                    <p className="text-red-100 text-sm line-clamp-3">{event.eventContent}</p>
+                  </div>
+
+                  {/* Event Details */}
+                  <div className="p-6 flex-1 flex flex-col">
+                    <div className="space-y-4 flex-1">
+                      <div className="flex items-center text-gray-600">
+                        <FaCalendarAlt className="text-red-500 mr-3 flex-shrink-0" />
+                        <span className="font-medium">{formatDate(event.eventDate)}</span>
+                      </div>
+
+                      <div className="flex items-center text-gray-600">
+                        <FaClock className="text-red-500 mr-3 flex-shrink-0" />
+                        <span>{formatTime(event.eventTime)}</span>
+                      </div>
+
+                      <div className="flex items-start text-gray-600">
+                        <FaMapMarkerAlt className="text-red-500 mr-3 mt-1 flex-shrink-0" />
+                        <span className="line-clamp-2">{event.location}</span>
+                      </div>
+
+                      <div className="flex items-center text-gray-600">
+                        <FaUsers className="text-red-500 mr-3 flex-shrink-0" />
+                        <span>Tối đa {event.maxParticipants} người tham gia</span>
+                      </div>
+
+                      <div className="flex items-center text-gray-600">
+                        <FaTint className="text-red-500 mr-3 flex-shrink-0" />
+                        <span>
+                          {event.bloodTypeRequired 
+                            ? `Nhóm máu: ${event.bloodTypeRequired}`
+                            : 'Tất cả nhóm máu'
+                          }
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-6">
+                      <button className="w-full bg-gradient-to-r from-red-600 to-red-400 hover:from-red-700 hover:to-red-500 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center">
+                        <FaClipboardList className="mr-2" />
+                        Xem danh sách tham gia
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           /* Participants List */
           <div>
@@ -319,8 +434,43 @@ const BloodDonationManagement = () => {
 
             {/* Participants Table */}
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <h3 className="text-lg font-semibold text-gray-900">Danh sách người tham gia</h3>
+                <div className="flex flex-col sm:flex-row gap-2 sm:items-center w-full sm:w-auto">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm theo tên, SĐT, nhóm máu, trạng thái..."
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm w-full sm:w-64"
+                  />
+                  <div className="flex gap-2 justify-center sm:justify-start mt-2 sm:mt-0">
+                    <button
+                      type="button"
+                      onClick={() => setSortField('fullName')}
+                      className={`px-4 py-2 rounded-full border-2 text-xs font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
+                        ${sortField === 'fullName' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
+                    >
+                      Tên
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSortField('bloodType')}
+                      className={`px-4 py-2 rounded-full border-2 text-xs font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
+                        ${sortField === 'bloodType' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
+                    >
+                      Nhóm máu
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSortField('createdDate')}
+                      className={`px-4 py-2 rounded-full border-2 text-xs font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
+                        ${sortField === 'createdDate' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
+                    >
+                      Ngày đăng ký
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {participantsLoading ? (
@@ -328,14 +478,14 @@ const BloodDonationManagement = () => {
                   <FaSpinner className="animate-spin text-red-600 text-2xl mx-auto mb-4" />
                   <p className="text-gray-600">Đang tải danh sách người tham gia...</p>
                 </div>
-              ) : participants.length === 0 ? (
+              ) : sortedParticipants.length === 0 ? (
                 <div className="p-8 text-center">
                   <FaUsers className="text-gray-400 text-4xl mx-auto mb-4" />
                   <p className="text-gray-600">Chưa có người nào đăng ký tham gia sự kiện này.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
-                  {participants.map((participant) => (
+                  {sortedParticipants.map((participant) => (
                     <div
                       key={participant.appointmentId}
                       className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden group flex flex-col h-full"
@@ -382,38 +532,47 @@ const BloodDonationManagement = () => {
                           <div className="space-y-2">
                             {/* Nút check-in */}
                             {participant.appointmentStatus === 'Đã đủ điều kiện' ? (
-                              <button
-                                onClick={async () => {
-                                  setCheckingIn(prev => new Set(prev).add(participant.appointmentId));
-                                  try {
-                                await checkinParticipant(participant.appointmentId);
-                                setSuccessMessage('Check-in thành công!');
-                                setShowSuccess(true);
-                                if (selectedEvent) {
-                                  const participantsData = await getRegisteredParticipantsByEventId(selectedEvent.eventId);
-                                  setParticipants(participantsData);
-                                }
-                              } catch {
-                                // Silent error handling
-                              } finally {
-                                    setCheckingIn(prev => {
-                                      const newSet = new Set(prev);
-                                      newSet.delete(participant.appointmentId);
-                                      return newSet;
-                                    });
-                                  }
-                                }}
-                                disabled={checkingIn.has(participant.appointmentId)}
-                                className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
-                                title="Check-in"
-                              >
-                                {checkingIn.has(participant.appointmentId) ? (
-                                  <FaSpinner className="animate-spin mr-2" />
-                                ) : (
-                                  <FaUserCheck className="mr-2" />
-                                )}
-                                Check-in
-                              </button>
+                              (() => {
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const eventDate = new Date(selectedEvent.eventDate);
+                                eventDate.setHours(0, 0, 0, 0);
+                                const isCheckinDay = today.getTime() === eventDate.getTime();
+                                return (
+                                  <button
+                                    onClick={async () => {
+                                      setCheckingIn(prev => new Set(prev).add(participant.appointmentId));
+                                      try {
+                                        await checkinParticipant(participant.appointmentId);
+                                        setSuccessMessage('Check-in thành công!');
+                                        setShowSuccess(true);
+                                        if (selectedEvent) {
+                                          const participantsData = await getRegisteredParticipantsByEventId(selectedEvent.eventId);
+                                          setParticipants(participantsData);
+                                        }
+                                      } catch {
+                                        // Silent error handling
+                                      } finally {
+                                        setCheckingIn(prev => {
+                                          const newSet = new Set(prev);
+                                          newSet.delete(participant.appointmentId);
+                                          return newSet;
+                                        });
+                                      }
+                                    }}
+                                    disabled={!isCheckinDay || checkingIn.has(participant.appointmentId)}
+                                    className={`w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-white ${isCheckinDay ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-300 cursor-not-allowed'} disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200`}
+                                    title={isCheckinDay ? 'Check-in' : `Chỉ check-in vào ngày diễn ra sự kiện: ${formatDate(selectedEvent.eventDate)}`}
+                                  >
+                                    {checkingIn.has(participant.appointmentId) ? (
+                                      <FaSpinner className="animate-spin mr-2" />
+                                    ) : (
+                                      <FaUserCheck className="mr-2" />
+                                    )}
+                                    Check-in
+                                  </button>
+                                );
+                              })()
                             ) : participant.appointmentStatus === 'Đã đến' ? (
                               <div className="space-y-2">
                                 <button

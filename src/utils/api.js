@@ -184,7 +184,7 @@ export const registerUser = async (userData) => {
 // Get events list
 export const getEvents = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/Appointment/GetEventsLists`, {
+    const response = await fetch(`${API_BASE_URL}/Event/GetAllEvents`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

@@ -58,7 +58,7 @@ const EmergencyRegisterForm = ({ onEmergencyCreated }) => {
       case 'requiredUnits':
         if (!value) return 'Vui lòng nhập số đơn vị máu cần thiết';
         if (isNaN(value) || parseInt(value) < 1) return 'Số đơn vị máu phải lớn hơn 0';
-        if (parseInt(value) > 50) return 'Số đơn vị máu không được vượt quá 50';
+        if (parseInt(value) > 500) return 'Số đơn vị máu không được vượt quá 500';
         return '';
       case 'hospitalId':
         return !value ? 'Vui lòng chọn bệnh viện' : '';
@@ -266,7 +266,7 @@ const EmergencyRegisterForm = ({ onEmergencyCreated }) => {
                       name="requiredUnits" 
                       type="number" 
                       min="1" 
-                      max="50"
+                      max="500"
                       value={form.requiredUnits} 
                       onChange={handleChange}
                       onBlur={handleBlur}
@@ -497,7 +497,6 @@ const EmergencyRequests = () => {
     } else {
       fetchMyEmergencies();
     }
-    // eslint-disable-next-line
   }, []);
 
   const fetchHospitals = async () => {

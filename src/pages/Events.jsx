@@ -18,6 +18,8 @@ const Events = () => {
   const [surveyError, setSurveyError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [userProfile, setUserProfile] = useState(null);
+  const [sortField, setSortField] = useState('eventDate');
+  // Bỏ sortOrder, chỉ còn sortField
 
   useEffect(() => {
     fetchEvents();
@@ -325,16 +327,40 @@ const Events = () => {
     return hasValidAppointment;
   };
 
-  // Filter events based on search term
-  const filteredEvents = events.filter(event => {
+  // Filter events based on search term and exclude ended events
+  let filteredEvents = events.filter(event => {
+    // Ẩn sự kiện đã kết thúc (endDate < hôm nay)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const eventDate = new Date(event.eventDate);
+    if (eventDate < today) return false;
+    // Chỉ hiện eventStatus === 'Public'
+    if (event.eventStatus !== 'Public') return false;
     if (!searchTerm.trim()) return true;
-    
     const searchLower = searchTerm.toLowerCase();
     return (
       event.eventTitle?.toLowerCase().includes(searchLower) ||
       event.eventContent?.toLowerCase().includes(searchLower) ||
       event.location?.toLowerCase().includes(searchLower)
     );
+  });
+
+  // Sort events
+  filteredEvents = filteredEvents.sort((a, b) => {
+    if (sortField === 'eventDate') {
+      // Ngày gần nhất lên đầu (giảm dần)
+      return new Date(b.eventDate) - new Date(a.eventDate);
+    } else if (sortField === 'bloodTypeRequired') {
+      // Sort theo nhóm máu (A+ -> O-)
+      const bloodOrder = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
+      const idxA = bloodOrder.indexOf(a.bloodTypeRequired || '');
+      const idxB = bloodOrder.indexOf(b.bloodTypeRequired || '');
+      if (idxA === -1 && idxB === -1) return 0;
+      if (idxA === -1) return 1;
+      if (idxB === -1) return -1;
+      return idxA - idxB;
+    }
+    return 0;
   });
 
   if (loading) {
@@ -391,33 +417,51 @@ const Events = () => {
           </p>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-8">
-          <div className="max-w-2xl mx-auto">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                <FaSearch className="h-6 w-6 text-gray-400" />
-              </div>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="🔍 Tìm kiếm sự kiện theo tên, địa điểm hoặc nội dung..."
-                className="block w-full pl-12 pr-4 py-4 border-2 border-gray-200 rounded-2xl leading-6 bg-white placeholder-gray-400 focus:outline-none focus:placeholder-gray-300 focus:ring-4 focus:ring-red-100 focus:border-red-500 transition-all duration-300 text-lg shadow-sm hover:shadow-md focus:shadow-lg"
-              />
-            </div>
-            
-            {/* Search Results Info */}
-            {searchTerm && (
-              <div className="mt-4 flex items-center justify-center text-sm text-gray-600 bg-blue-50 rounded-xl p-3 border border-blue-200 max-w-md mx-auto">
-                <FaSearch className="mr-2 text-blue-500" />
-                <span>
-                  Tìm thấy <span className="font-semibold text-blue-700">{filteredEvents.length}</span> sự kiện cho "{searchTerm}"
-                </span>
-              </div>
-            )}
+        {/* Search & Sort Bar */}
+        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          {/* Search */}
+          <div className="relative w-full md:max-w-md">
+            <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <FaSearch className="h-5 w-5 text-gray-400" />
+            </span>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Tìm kiếm sự kiện theo tên, địa điểm hoặc nội dung..."
+              className="block w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-full leading-6 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-100 focus:border-red-500 transition-all duration-300 text-base shadow-sm hover:shadow-md focus:shadow-lg"
+            />
+          </div>
+          {/* Sort Buttons */}
+          <div className="flex gap-2 justify-center md:justify-end">
+            <button
+              type="button"
+              onClick={() => setSortField('eventDate')}
+              className={`px-5 py-2 rounded-full border-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
+                ${sortField === 'eventDate' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
+            >
+              Ngày gần nhất
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortField('bloodTypeRequired')}
+              className={`px-5 py-2 rounded-full border-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
+                ${sortField === 'bloodTypeRequired' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
+            >
+              Nhóm máu
+            </button>
           </div>
         </div>
+
+        {/* Search Results Info */}
+        {searchTerm && (
+          <div className="mt-4 flex items-center justify-center text-sm text-gray-600 bg-blue-50 rounded-xl p-3 border border-blue-200 max-w-md mx-auto">
+            <FaSearch className="mr-2 text-blue-500" />
+            <span>
+              Tìm thấy <span className="font-semibold text-blue-700">{filteredEvents.length}</span> sự kiện cho "{searchTerm}"
+            </span>
+          </div>
+        )}
 
         {/* Error Message */}
         {error && (

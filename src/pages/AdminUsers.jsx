@@ -45,17 +45,14 @@ const AdminUsers = () => {
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [pendingDeleteUser, setPendingDeleteUser] = useState(null);
 
-  // Fetch users mỗi khi filters thay đổi
   useEffect(() => {
     fetchUsers(filters);
-    // eslint-disable-next-line
   }, [filters.page, filters.pageSize, filters.sortOrder]);
 
   const fetchUsers = async (customFilters = filters) => {
     setLoading(true);
     setError('');
     try {
-      // Tạo query string từ customFilters
       const params = new URLSearchParams();
       Object.entries(customFilters).forEach(([key, value]) => {
         if (value !== '' && value !== undefined && value !== null) params.append(key, value);
@@ -105,7 +102,6 @@ const AdminUsers = () => {
     setFilters((prev) => ({ ...prev, sortOrder, page: 1 }));
   };
 
-  // Validate create form
   const validateCreateForm = () => {
     const errors = {};
     
@@ -163,7 +159,6 @@ const AdminUsers = () => {
     return Object.keys(errors).length === 0;
   };
 
-  // Create user
   const handleCreateUser = async (e) => {
     e.preventDefault();
     
@@ -172,7 +167,7 @@ const AdminUsers = () => {
     }
     
     setCreating(true);
-    setApiError(''); // Clear previous API errors
+    setApiError('');
     
     try {
       const res = await fetch(`${API_URL}/create-account`, {
@@ -187,7 +182,6 @@ const AdminUsers = () => {
       const responseData = await res.json();
       
       if (!res.ok || responseData.success === false) {
-        // Show all API errors at the top
         if (responseData.message) {
           setApiError(responseData.message);
         } else {
@@ -196,7 +190,6 @@ const AdminUsers = () => {
         return;
       }
       
-      // Success case
       setToast({ message: 'Tạo tài khoản thành công!', type: 'success' });
       setShowCreateModal(false);
       setCreateForm({
@@ -225,12 +218,10 @@ const AdminUsers = () => {
     const { name, value } = e.target;
     setCreateForm({ ...createForm, [name]: value });
     
-    // Clear API error when user starts typing
     if (apiError) {
       setApiError('');
     }
     
-    // Validate field in real-time
     validateField(name, value);
   };
 
@@ -335,7 +326,6 @@ const AdminUsers = () => {
     setCreateErrors(errors);
   };
 
-  // Xóa user
   const handleDeleteUser = (username) => {
     setPendingDeleteUser({ username });
     setShowDeleteConfirmModal(true);
@@ -343,25 +333,25 @@ const AdminUsers = () => {
 
   const confirmDeleteUser = async () => {
     if (!pendingDeleteUser) return;
-
     const { username } = pendingDeleteUser;
     try {
-      const res = await fetch(`${API_URL}/${username}`, {
-        method: 'DELETE',
+      const res = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/admin/users/status', {
+        method: 'PUT',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${getAuthToken()}`,
         },
+        body: JSON.stringify({ username, newStatus: 'Inactive', reason: 'Admin set inactive' }),
       });
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || 'Lỗi xóa user');
+        throw new Error(text || 'Lỗi cập nhật trạng thái user');
       }
-      setToast({ message: 'Xóa người dùng thành công!', type: 'success' });
+      setToast({ message: 'Đã chuyển trạng thái tài khoản thành Inactive!', type: 'success' });
       fetchUsers(filters);
     } catch (err) {
-      setToast({ message: err.message || 'Lỗi xóa user', type: 'error' });
+      setToast({ message: err.message || 'Lỗi cập nhật trạng thái user', type: 'error' });
     }
-
     setShowDeleteConfirmModal(false);
     setPendingDeleteUser(null);
   };
@@ -371,7 +361,6 @@ const AdminUsers = () => {
     setPendingDeleteUser(null);
   };
 
-  // Sửa user
   const handleEditUser = (user) => {
     setEditingUser(user);
     setEditForm({
@@ -396,7 +385,6 @@ const AdminUsers = () => {
   const handleEditFormSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Chỉ gửi đúng các trường cho phép
       const updateData = {
         username: editForm.username,
         email: editForm.email,
@@ -490,7 +478,6 @@ const AdminUsers = () => {
         <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
       )}
 
-      {/* Modal xác nhận xóa user */}
       {showDeleteConfirmModal && pendingDeleteUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
@@ -608,14 +595,12 @@ const AdminUsers = () => {
         <button onClick={() => handlePageChange(1)} disabled={filters.page === totalPages} className="btn flex items-center gap-1 disabled:opacity-50">Sau <FaChevronRight /></button>
       </div>
 
-      {/* Modal tạo tài khoản */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
             <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-2xl" onClick={() => setShowCreateModal(false)}>&times;</button>
             <h3 className="text-xl font-bold mb-4 text-green-700 flex items-center gap-2"><FaPlus /> Tạo tài khoản mới</h3>
             
-            {/* API Error Display */}
             {apiError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
                 <div className="flex items-center gap-2">
@@ -790,7 +775,6 @@ const AdminUsers = () => {
         </div>
       )}
 
-      {/* Modal chỉnh sửa user */}
       {editingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">
@@ -862,7 +846,6 @@ const AdminUsers = () => {
           </div>
         </div>
       )}
-      {/* Modal xem chi tiết user */}
       {detailUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg relative">

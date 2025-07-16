@@ -41,7 +41,7 @@ const AppointmentHistory = () => {
   const fetchAppointmentHistory = async () => {
     try {
       setLoading(true);
-      setError(''); // Clear any previous errors
+      setError('');
       const user = getUser();
       
       if (!user || !user.username) {
@@ -53,11 +53,9 @@ const AppointmentHistory = () => {
       setAppointments(data);
       console.log('Appointment history:', data);
     } catch (err) {
-      // Only show error if it's not about empty appointment history
       if (err.message && !err.message.toLowerCase().includes('no appointment history found')) {
         console.error('Error fetching appointment history:', err);
       } else {
-        // If it's about no appointments found, just set empty array without error
         setAppointments([]);
       }
     } finally {
@@ -105,7 +103,6 @@ const AppointmentHistory = () => {
   };
 
   const handleReregisterEvent = async (appointmentId, eventId, eventTitle) => {
-    // Lấy survey và mở modal
     try {
       setReregisteringAppointments(prev => new Set(prev).add(appointmentId));
       const res = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Survey/questions');
@@ -125,15 +122,12 @@ const AppointmentHistory = () => {
 
   const handleSurveySubmit = async (answers) => {
     try {
-      // Kiểm tra điều kiện hợp lệ trước
       let eligible = true;
       let errorMessage = '';
       
-      // Bắt buộc trả lời tất cả các câu hỏi
       for (const q of surveyQuestions) {
         const ans = answers[q.questionId];
         
-        // Kiểm tra câu hỏi có được trả lời chưa
         if (!ans) {
           eligible = false;
           errorMessage = 'Bạn phải trả lời tất cả các câu hỏi trước khi nộp khảo sát.';
@@ -177,14 +171,12 @@ const AppointmentHistory = () => {
             }
           }
           
-          if (!eligible) break; // Nếu đã có lỗi requireText thì dừng
+          if (!eligible) break;
           
-          // Với multiple choice, chỉ cần không chọn các lựa chọn có nguy cơ
           const selectedOptions = ans.options.map(id => {
             const opt = q.options.find(o => o.optionId === id);
             return opt.optionText;
           });
-          // Nếu có chọn bất kỳ lựa chọn nào khác "Không" thì không hợp lệ
           if (!selectedOptions.every(text => text === 'Không')) {
             eligible = false;
             errorMessage = 'Bạn chưa đủ điều kiện đăng ký lại trực tuyến.';
@@ -196,22 +188,18 @@ const AppointmentHistory = () => {
       setShowSurvey(false);
       
       if (eligible) {
-        // Kiểm tra pendingReregister có tồn tại không
         if (!pendingReregister || !pendingReregister.eventId) {
           setError('Thông tin sự kiện không hợp lệ. Vui lòng thử lại.');
           return;
         }
 
-        // Đủ điều kiện, đăng ký appointment trước
         try {
           const appointmentResult = await registerForEvent(pendingReregister.eventId);
           console.log('Appointment re-registered:', appointmentResult);
           
-          // Lấy appointmentId từ kết quả đăng ký
           const appointmentId = appointmentResult.appointmentId || appointmentResult.id;
           
           if (appointmentId) {
-            // Gửi survey answers với appointmentId
             await submitSurveyAnswers(appointmentId, answers);
           }
           
@@ -219,7 +207,6 @@ const AppointmentHistory = () => {
           setShowSuccess(true);
           await fetchAppointmentHistory();
         } catch (err) {
-          // Kiểm tra nếu đây là thông báo về lịch hẹn đã được duyệt
           if (err.message && err.message.includes('Bạn đã có một lịch hẹn đã được duyệt và đủ điều kiện')) {
             setSuccessMessage(err.message);
             setShowSuccess(true);
@@ -362,7 +349,6 @@ const AppointmentHistory = () => {
   };
 
   const canViewSurveyAnswers = (status) => {
-    // Chỉ hiển thị nút khảo sát cho những cuộc hẹn chưa được duyệt hoặc chưa hoàn thành
     const validStatuses = [
       'Đã đăng ký',
       'Chờ xử lý',
@@ -399,7 +385,6 @@ const AppointmentHistory = () => {
   };
 
   const handleReportSuccess = () => {
-    // Có thể refresh data hoặc hiển thị thông báo
     setToastMessage('Đã gửi đánh giá thành công!');
     setToastType('success');
     setShowToast(true);
@@ -498,7 +483,6 @@ const AppointmentHistory = () => {
         />
       )}
 
-      {/* Modal xác nhận hủy lịch hẹn */}
       {showCancelConfirmModal && pendingCancelAppointment && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
           <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full mx-4">
@@ -549,7 +533,6 @@ const AppointmentHistory = () => {
         </div>
       )}
 
-      {/* Modal chứng nhận */}
       {showCertificate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-8 w-full max-w-lg mx-4 shadow-2xl border-2 border-yellow-200">
@@ -597,7 +580,6 @@ const AppointmentHistory = () => {
       )}
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Header */}
         <div className="text-center mb-6">
           <div className="flex justify-center mb-3">
             <div className="w-12 h-12 bg-gradient-to-r from-red-600 to-red-400 rounded-full flex items-center justify-center shadow-md">
@@ -612,7 +594,6 @@ const AppointmentHistory = () => {
           </p>
         </div>
 
-        {/* Error Message */}
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
             <div className="flex items-center">
@@ -622,7 +603,6 @@ const AppointmentHistory = () => {
           </div>
         )}
 
-        {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="bg-white rounded-lg shadow-sm p-3 border border-gray-200">
             <div className="flex items-center">
@@ -679,7 +659,6 @@ const AppointmentHistory = () => {
           </div>
         </div>
 
-        {/* Info about reregistration feature */}
         {appointments.some(appointment => 
           canReregisterEvent(appointment.appointmentStatus, appointment.appointmentDateOfAppointment)
         ) && (
@@ -698,7 +677,6 @@ const AppointmentHistory = () => {
           </div>
         )}
 
-        {/* Appointments List */}
         {appointments.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -727,7 +705,6 @@ const AppointmentHistory = () => {
               >
                 <div className="p-4">
                   <div className="flex items-center justify-between">
-                    {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="text-base font-semibold text-gray-900 truncate">
@@ -759,7 +736,6 @@ const AppointmentHistory = () => {
                       </div>
                     </div>
 
-                    {/* Actions and Status */}
                     <div className="ml-4 flex items-center space-x-2">
                       <div className="flex-shrink-0">
                         {getStatusBadge(appointment.appointmentStatus)}
@@ -846,12 +822,10 @@ const AppointmentHistory = () => {
         )}
       </div>
 
-      {/* Appointment Detail Modal */}
       {showModal && (
         <AppointmentDetailModal appointment={selectedAppointment} onClose={() => setShowModal(false)} />
       )}
 
-      {/* Toast notification */}
       {showToast && (
         <Toast
           message={toastMessage}

@@ -18,7 +18,6 @@ const BloodSearch = () => {
     setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  // Tự động tìm kiếm khi component mount
   useEffect(() => {
     if (isAllowed) {
       handleSearch();
@@ -45,14 +44,12 @@ const BloodSearch = () => {
       const data = await response.json();
       let filteredResults = data.bloodRequests || [];
 
-      // Filter by blood type
       if (filters.bloodType !== 'Tất cả') {
         filteredResults = filteredResults.filter(result => 
           result.bloodType === filters.bloodType
         );
       }
 
-      // Filter by distance (extract number from "9.4 km" format)
       filteredResults = filteredResults.filter(result => {
         const distanceStr = result.distance || '';
         const distanceNum = parseFloat(distanceStr.replace(/[^\d.]/g, ''));
