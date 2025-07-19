@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FaHeartbeat, FaSearch, FaUserPlus, FaBell, FaUsers, FaShieldAlt, FaClock, FaMapMarkerAlt, FaNewspaper, FaUser, FaCalendarAlt, FaArrowRight, FaTimes, FaSpinner, FaGift, FaHandHoldingHeart, FaTrophy, FaRocket } from 'react-icons/fa';
-import { getAllBlogPosts, getBlogPostById, isAuthenticated, getEvents } from '../utils/api';
+import { getAllBlogPosts, getBlogPostById, isAuthenticated, getEvents, getUserRegisteredEvents } from '../utils/api';
 
 const Home = () => {
   const [blogs, setBlogs] = useState([]);
   const [allBlogs, setAllBlogs] = useState([]);
   const [events, setEvents] = useState([]);
+  const [userRegisteredEvents, setUserRegisteredEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [selectedBlog, setSelectedBlog] = useState(null);
@@ -18,7 +19,10 @@ const Home = () => {
   useEffect(() => {
     fetchBlogs();
     fetchEvents();
-  }, []);
+    if (loggedIn) {
+      fetchUserRegisteredEvents();
+    }
+  }, [loggedIn]);
 
   const fetchBlogs = async () => {
     try {
@@ -41,6 +45,20 @@ const Home = () => {
     } finally {
       setEventsLoading(false);
     }
+  };
+
+  const fetchUserRegisteredEvents = async () => {
+    try {
+      const data = await getUserRegisteredEvents();
+      setUserRegisteredEvents(data);
+    } catch (err) {
+      console.error('Error fetching user registered events:', err);
+      setUserRegisteredEvents([]);
+    }
+  };
+
+  const isUserRegisteredForEvent = (eventId) => {
+    return userRegisteredEvents.some(event => event.eventId === eventId);
   };
 
   const handleReadMore = async (blogId) => {
@@ -277,14 +295,23 @@ const Home = () => {
                             Đăng ký tham gia
                           </Link>
                         )}
-                        {loggedIn && (
+                        {loggedIn && isUserRegisteredForEvent(event.eventId) && (
                           <button 
-                            className="inline-flex items-center px-4 py-2 bg-gray-500 text-white font-medium text-sm rounded-lg cursor-not-allowed opacity-50"
+                            className="inline-flex items-center px-4 py-2 bg-green-500 text-white font-medium text-sm rounded-lg cursor-not-allowed"
                             disabled
                           >
                             <FaCalendarAlt className="mr-2" />
                             Đã đăng ký
                           </button>
+                        )}
+                        {loggedIn && !isUserRegisteredForEvent(event.eventId) && (
+                          <Link 
+                            to={`/events?eventId=${event.eventId}`} 
+                            className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium text-sm rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-1 hover:scale-105"
+                          >
+                            <FaUserPlus className="mr-2" />
+                            Đăng ký tham gia
+                          </Link>
                         )}
                       </div>
                     </div>

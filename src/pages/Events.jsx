@@ -3,6 +3,7 @@ import { FaCalendarAlt, FaClock, FaMapMarkerAlt, FaUsers, FaHeartbeat, FaRegCale
 import { getEvents, getUser, registerAppointmentWithSurvey, getUserRegisteredEvents } from '../utils/api';
 import Toast from '../components/Toast';
 import SurveyModal from '../components/SurveyModal';
+import { useLocation } from 'react-router-dom';
 
 const Events = () => {
   const [events, setEvents] = useState([]);
@@ -20,11 +21,26 @@ const Events = () => {
   // Bỏ userProfile vì không còn sử dụng
   const [sortField, setSortField] = useState('eventDate');
   // Bỏ sortOrder, chỉ còn sortField
+  const location = useLocation();
 
   useEffect(() => {
     fetchEvents();
     // Bỏ fetchUserProfile vì không còn cần thiết
   }, []);
+
+  // Xử lý eventId từ URL parameter
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const eventId = params.get('eventId');
+    
+    if (eventId && events.length > 0) {
+      const targetEvent = events.find(event => event.eventId == eventId);
+      if (targetEvent && !isEventRegistered(eventId)) {
+        // Tự động mở modal đăng ký cho sự kiện này
+        handleRegisterEvent(eventId, targetEvent.eventTitle);
+      }
+    }
+  }, [events, location.search]);
 
   // Bỏ fetchUserProfile function vì không còn sử dụng
 
@@ -355,6 +371,7 @@ const Events = () => {
             setSurveyError('');
           }}
           errorMessage={surveyError}
+          eventTitle={pendingRegister?.eventTitle}
         />
       )}
 
