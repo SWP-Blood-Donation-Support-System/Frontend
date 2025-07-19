@@ -45,7 +45,6 @@ const EventsManagement = () => {
     eventContent: "",
     location: "",
     maxParticipants: "",
-    bloodTypeRequired: "",
     eventStatus: "Public",
   });
 
@@ -132,17 +131,6 @@ const EventsManagement = () => {
               return "Giờ diễn ra phải trong tương lai nếu sự kiện là hôm nay";
             }
           }
-        }
-        return "";
-      }
-
-      case "bloodTypeRequired": {
-        // bloodTypeRequired can be empty (null) or a valid blood type
-        if (
-          value &&
-          !["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].includes(value)
-        ) {
-          return "Nhóm máu không hợp lệ";
         }
         return "";
       }
@@ -263,7 +251,6 @@ const EventsManagement = () => {
       const eventData = {
         ...formData,
         maxParticipants: parseInt(formData.maxParticipants),
-        bloodTypeRequired: formData.bloodTypeRequired || null,
         // eventStatus đã nằm trong formData
       };
 
@@ -297,7 +284,6 @@ const EventsManagement = () => {
       eventContent: event.eventContent,
       location: event.location,
       maxParticipants: event.maxParticipants.toString(),
-      bloodTypeRequired: event.bloodTypeRequired || "",
       eventStatus: event.eventStatus || "Public",
     });
     setErrors({});
@@ -345,7 +331,6 @@ const EventsManagement = () => {
       eventContent: "",
       location: "",
       maxParticipants: "",
-      bloodTypeRequired: "",
       eventStatus: "Public",
     });
     setIsEditing(false);
@@ -760,15 +745,6 @@ const EventsManagement = () => {
                           Tối đa {event.maxParticipants} người tham gia
                         </span>
                       </div>
-
-                      <div className="flex items-center text-gray-600">
-                        <FaTint className="text-red-500 mr-3 flex-shrink-0" />
-                        <span className="line-clamp-1">
-                          {event.bloodTypeRequired
-                            ? `Nhóm máu: ${event.bloodTypeRequired}`
-                            : "Tất cả nhóm máu"}
-                        </span>
-                      </div>
                     </div>
 
                     <div className="mt-6 pt-4 border-t border-gray-100 flex space-x-3">
@@ -983,34 +959,6 @@ const EventsManagement = () => {
                     <p className="text-red-500 text-xs mt-1 flex items-center"><FaExclamationTriangle className="inline mr-1" /> {errors.maxParticipants}</p>
                   )}
                   {formData.maxParticipants && !errors.maxParticipants && (
-                    <p className="text-green-600 text-xs mt-1 flex items-center"><FaCheck className="inline mr-1" /> Hợp lệ</p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <FaTint className="text-red-400" /> Nhóm máu yêu cầu
-                  </label>
-                  <select
-                    name="bloodTypeRequired"
-                    value={formData.bloodTypeRequired}
-                    onChange={handleInputChange}
-                    onBlur={handleBlur}
-                    className={getFieldClassName("bloodTypeRequired") + " text-base"}
-                  >
-                    <option value="">Tất cả nhóm máu</option>
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="B-">B-</option>
-                    <option value="AB+">AB+</option>
-                    <option value="AB-">AB-</option>
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
-                  </select>
-                  {touched.bloodTypeRequired && errors.bloodTypeRequired && (
-                    <p className="text-red-500 text-xs mt-1 flex items-center"><FaExclamationTriangle className="inline mr-1" /> {errors.bloodTypeRequired}</p>
-                  )}
-                  {formData.bloodTypeRequired && !errors.bloodTypeRequired && (
                     <p className="text-green-600 text-xs mt-1 flex items-center"><FaCheck className="inline mr-1" /> Hợp lệ</p>
                   )}
                 </div>

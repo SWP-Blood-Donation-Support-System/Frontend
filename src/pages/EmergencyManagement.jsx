@@ -23,6 +23,7 @@ const EmergencyManagement = () => {
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState('success');
   const [transferLoading, setTransferLoading] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     if (isAdminOrStaff) {
@@ -190,13 +191,17 @@ const EmergencyManagement = () => {
 
   const filtered = emergencies.filter(item => {
     const s = search.toLowerCase();
-    return (
+    const matchesSearch = (
       (item.username || '').toLowerCase().includes(s) ||
       (item.bloodType || '').toLowerCase().includes(s) ||
       (item.hospitalId + '').includes(s) ||
       (item.hospitalName || '').toLowerCase().includes(s) ||
       (item.emergencyNote || '').toLowerCase().includes(s)
     );
+    
+    const matchesStatus = statusFilter === 'all' || item.emergencyStatus === statusFilter;
+    
+    return matchesSearch && matchesStatus;
   });
 
   const sorted = [...filtered].sort((a, b) => {
@@ -312,31 +317,31 @@ const EmergencyManagement = () => {
             <FaSearch className="text-gray-400 text-lg" />
             <input value={search} onChange={handleSearch} placeholder="Tìm kiếm theo tên, nhóm máu, bệnh viện, ghi chú..." className="input w-full bg-transparent border-0 focus:ring-0 text-base" />
           </div>
-          <div className="flex gap-2 items-center w-full md:w-auto">
-            <span className="font-semibold text-gray-600 text-sm">Sắp xếp:</span>
+          <div className="flex gap-3 items-center w-full md:w-auto">
+            <select
+              value={statusFilter}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm bg-white shadow-sm"
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="Chờ xét duyệt">Chờ xét duyệt</option>
+              <option value="Đã xét duyệt">Đã xét duyệt</option>
+              <option value="Từ chối">Từ chối</option>
+              <option value="Lượng máu đang được chuyển đến">Lượng máu đang được chuyển đến</option>
+              <option value="Đã được đáp ứng">Đã được đáp ứng</option>
+              <option value="Đã quá hạn">Đã quá hạn</option>
+            </select>
             <button 
-              className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border transition-colors duration-200 ${
+              className={`inline-flex items-center px-4 py-3 text-sm font-medium rounded-xl border transition-colors duration-200 ${
                 sortField==='emergencyDate' 
                   ? 'bg-red-100 text-red-700 border-red-300 shadow-sm' 
-                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50 shadow-sm'
               }`} 
               onClick={()=>handleSort('emergencyDate')}
             >
-              <FaCalendarAlt className="w-4 h-4 mr-1" />
+              <FaCalendarAlt className="w-4 h-4 mr-2" />
               Ngày tạo 
               {sortField==='emergencyDate' && (sortOrder==='asc'?<FaSortUp className="w-3 h-3 ml-1"/>:<FaSortDown className="w-3 h-3 ml-1"/>)}
-            </button>
-            <button 
-              className={`inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg border transition-colors duration-200 ${
-                sortField==='emergencyStatus' 
-                  ? 'bg-red-100 text-red-700 border-red-300 shadow-sm' 
-                  : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-              }`} 
-              onClick={()=>handleSort('emergencyStatus')}
-            >
-              <FaInfoCircle className="w-4 h-4 mr-1" />
-              Trạng thái 
-              {sortField==='emergencyStatus' && (sortOrder==='asc'?<FaSortUp className="w-3 h-3 ml-1"/>:<FaSortDown className="w-3 h-3 ml-1"/>)}
             </button>
           </div>
         </div>

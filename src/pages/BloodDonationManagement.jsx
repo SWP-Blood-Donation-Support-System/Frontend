@@ -31,9 +31,10 @@ const BloodDonationManagement = () => {
   const [customNote, setCustomNote] = useState('');
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState("fullName");
   const [eventSearchTerm, setEventSearchTerm] = useState("");
   const [eventSortField, setEventSortField] = useState("eventDate");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [bloodTypeFilter, setBloodTypeFilter] = useState("all");
 
   useEffect(() => {
     fetchEvents();
@@ -192,7 +193,7 @@ const BloodDonationManagement = () => {
   // Lọc và sắp xếp participants
   const filteredParticipants = participants.filter((p) => {
     const term = searchTerm.toLowerCase();
-    return (
+    const matchesSearch = (
       (p.fullName && p.fullName.toLowerCase().includes(term)) ||
       (p.username && p.username.toLowerCase().includes(term)) ||
       (p.phoneNumber && p.phoneNumber.toLowerCase().includes(term)) ||
@@ -200,31 +201,17 @@ const BloodDonationManagement = () => {
       (getBloodTypeName(p.bloodType) && getBloodTypeName(p.bloodType).toLowerCase().includes(term)) ||
       (p.appointmentStatus && p.appointmentStatus.toLowerCase().includes(term))
     );
+    
+    const matchesStatus = statusFilter === "all" || p.appointmentStatus === statusFilter;
+    const matchesBloodType = bloodTypeFilter === "all" || getBloodTypeName(p.bloodType) === bloodTypeFilter;
+    
+    return matchesSearch && matchesStatus && matchesBloodType;
   });
 
   const sortedParticipants = [...filteredParticipants].sort((a, b) => {
-    let aValue, bValue;
-    switch (sortField) {
-      case "fullName":
-        aValue = (a.fullName || a.username || "").toLowerCase();
-        bValue = (b.fullName || b.username || "").toLowerCase();
-        break;
-      case "bloodType":
-        aValue = getBloodTypeName(a.bloodType) || "";
-        bValue = getBloodTypeName(b.bloodType) || "";
-        break;
-      case "appointmentStatus":
-        aValue = a.appointmentStatus || "";
-        bValue = b.appointmentStatus || "";
-        break;
-      case "createdDate":
-        aValue = new Date(a.createdDate || 0);
-        bValue = new Date(b.createdDate || 0);
-        break;
-      default:
-        aValue = (a.fullName || a.username || "").toLowerCase();
-        bValue = (b.fullName || b.username || "").toLowerCase();
-    }
+    // Sort by fullName by default
+    const aValue = (a.fullName || a.username || "").toLowerCase();
+    const bValue = (b.fullName || b.username || "").toLowerCase();
     return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
   });
 
@@ -243,14 +230,6 @@ const BloodDonationManagement = () => {
       return new Date(a.eventDate) - new Date(b.eventDate); // Ngày gần nhất lên đầu
     } else if (eventSortField === 'eventTitle') {
       return (a.eventTitle || '').localeCompare(b.eventTitle || '');
-    } else if (eventSortField === 'bloodTypeRequired') {
-      const bloodOrder = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-      const idxA = bloodOrder.indexOf(a.bloodTypeRequired || '');
-      const idxB = bloodOrder.indexOf(b.bloodTypeRequired || '');
-      if (idxA === -1 && idxB === -1) return 0;
-      if (idxA === -1) return 1;
-      if (idxB === -1) return -1;
-      return idxA - idxB;
     }
     return 0;
   });
@@ -329,14 +308,6 @@ const BloodDonationManagement = () => {
                 >
                   Tên sự kiện
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setEventSortField('bloodTypeRequired')}
-                  className={`px-5 py-2 rounded-full border-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
-                    ${eventSortField === 'bloodTypeRequired' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
-                >
-                  Nhóm máu
-                </button>
               </div>
             </div>
             {/* Events List */}
@@ -374,16 +345,6 @@ const BloodDonationManagement = () => {
                       <div className="flex items-center text-gray-600">
                         <FaUsers className="text-red-500 mr-3 flex-shrink-0" />
                         <span>Tối đa {event.maxParticipants} người tham gia</span>
-                      </div>
-
-                      <div className="flex items-center text-gray-600">
-                        <FaTint className="text-red-500 mr-3 flex-shrink-0" />
-                        <span>
-                          {event.bloodTypeRequired 
-                            ? `Nhóm máu: ${event.bloodTypeRequired}`
-                            : 'Tất cả nhóm máu'
-                          }
-                        </span>
                       </div>
                     </div>
 
@@ -444,32 +405,39 @@ const BloodDonationManagement = () => {
                     onChange={e => setSearchTerm(e.target.value)}
                     className="px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm w-full sm:w-64"
                   />
-                  <div className="flex gap-2 justify-center sm:justify-start mt-2 sm:mt-0">
-                    <button
-                      type="button"
-                      onClick={() => setSortField('fullName')}
-                      className={`px-4 py-2 rounded-full border-2 text-xs font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
-                        ${sortField === 'fullName' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
-                    >
-                      Tên
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSortField('bloodType')}
-                      className={`px-4 py-2 rounded-full border-2 text-xs font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
-                        ${sortField === 'bloodType' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
-                    >
-                      Nhóm máu
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSortField('createdDate')}
-                      className={`px-4 py-2 rounded-full border-2 text-xs font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
-                        ${sortField === 'createdDate' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
-                    >
-                      Ngày đăng ký
-                    </button>
-                  </div>
+                  <select
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm w-full sm:w-auto"
+                  >
+                    <option value="all">Tất cả trạng thái</option>
+                    <option value="Đã đến">Đã đến</option>
+                    <option value="Đã hiến">Đã hiến</option>
+                    <option value="Đã hủy">Đã hủy</option>
+                    <option value="Đã đủ điều kiện">Đã đủ điều kiện</option>
+                    <option value="Registered">Đã đăng ký</option>
+                    <option value="CheckedIn">Đã check-in</option>
+                    <option value="Donated">Đã hiến máu</option>
+                    <option value="Cancelled">Đã hủy</option>
+                    <option value="Không đủ điều kiện">Không đủ điều kiện</option>
+                    <option value="Đang xét duyệt">Đang xét duyệt</option>
+                    <option value="Chờ xử lý">Chờ xử lý</option>
+                  </select>
+                  <select
+                    value={bloodTypeFilter}
+                    onChange={e => setBloodTypeFilter(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm w-full sm:w-auto"
+                  >
+                    <option value="all">Tất cả nhóm máu</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
                 </div>
               </div>
 

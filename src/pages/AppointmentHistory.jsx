@@ -287,7 +287,7 @@ const AppointmentHistory = () => {
     return timeString.substring(0, 5);
   };
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, deferralReasonText, staffNote) => {
     switch (status?.toLowerCase()) {
       case 'completed':
       case 'hoàn thành':
@@ -309,23 +309,111 @@ const AppointmentHistory = () => {
       case 'pending':
       case 'chờ xử lý':
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-            <FaClock className="mr-1" />
-            Chờ xử lý
-          </span>
+          <div className="flex flex-col items-start">
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+              <FaClock className="mr-1" />
+              Chờ xử lý
+            </span>
+            {staffNote && staffNote !== 'Chưa có' && (
+              <div className="mt-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg max-w-xs">
+                <div className="flex items-start">
+                  <FaUser className="text-yellow-500 mr-2 mt-0.5 flex-shrink-0 text-xs" />
+                  <span className="text-xs text-yellow-800 leading-relaxed">
+                    {staffNote}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         );
       case 'đã đăng ký':
         return (
-          <span className=" inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 ">
-            <FaCheckCircle className="mr-1" />
-            Đã đăng ký
-          </span>
+          <div className="flex flex-col items-start">
+            <span className=" inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 ">
+              <FaCheckCircle className="mr-1" />
+              Đã đăng ký
+            </span>
+            {staffNote && staffNote !== 'Chưa có' && (
+              <div className="mt-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg max-w-xs">
+                <div className="flex items-start">
+                  <FaUser className="text-blue-500 mr-2 mt-0.5 flex-shrink-0 text-xs" />
+                  <span className="text-xs text-blue-800 leading-relaxed">
+                    {staffNote}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      case 'đã đủ điều kiện':
+        return (
+          <div className="flex flex-col items-start">
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <FaCheckCircle className="mr-1" />
+              Đã đủ điều kiện
+            </span>
+            <span className="text-xs text-green-600 mt-1">
+              Bạn cần đến cơ sở để hiến máu
+            </span>
+            {staffNote && staffNote !== 'Chưa có' && (
+              <div className="mt-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg max-w-xs">
+                <div className="flex items-start">
+                  <FaUser className="text-green-500 mr-2 mt-0.5 flex-shrink-0 text-xs" />
+                  <span className="text-xs text-green-800 leading-relaxed">
+                    {staffNote}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      case 'hoãn':
+      case 'deferred':
+        return (
+          <div className="flex flex-col items-start">
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+              <FaTimesCircle className="mr-1" />
+              Đã hoãn
+            </span>
+            {deferralReasonText && deferralReasonText !== 'Chưa có' && (
+              <div className="mt-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg max-w-xs">
+                <div className="flex items-start">
+                  <FaTimesCircle className="text-orange-500 mr-2 mt-0.5 flex-shrink-0 text-xs" />
+                  <span className="text-xs text-orange-800 leading-relaxed">
+                    Lý do: {deferralReasonText}
+                  </span>
+                </div>
+              </div>
+            )}
+            {staffNote && staffNote !== 'Chưa có' && (
+              <div className="mt-2 px-3 py-2 bg-orange-50 border border-orange-200 rounded-lg max-w-xs">
+                <div className="flex items-start">
+                  <FaUser className="text-orange-500 mr-2 mt-0.5 flex-shrink-0 text-xs" />
+                  <span className="text-xs text-orange-800 leading-relaxed">
+                    {staffNote}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-            {status || 'Không xác định'}
-          </span>
+          <div className="flex flex-col items-start">
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+              {status || 'Không xác định'}
+            </span>
+            {staffNote && staffNote !== 'Chưa có' && (
+              <div className="mt-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg max-w-xs">
+                <div className="flex items-start">
+                  <FaUser className="text-gray-500 mr-2 mt-0.5 flex-shrink-0 text-xs" />
+                  <span className="text-xs text-gray-800 leading-relaxed">
+                    {staffNote}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
         );
     }
   };
@@ -738,7 +826,7 @@ const AppointmentHistory = () => {
 
                     <div className="ml-4 flex items-center space-x-2">
                       <div className="flex-shrink-0">
-                        {getStatusBadge(appointment.appointmentStatus)}
+                        {getStatusBadge(appointment.appointmentStatus, appointment.deferralReasonText, appointment.staffNote)}
                       </div>
                       
                       <button

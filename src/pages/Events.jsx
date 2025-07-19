@@ -17,34 +17,16 @@ const Events = () => {
   const [pendingRegister, setPendingRegister] = useState(null); // {eventId, eventTitle}
   const [surveyError, setSurveyError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [userProfile, setUserProfile] = useState(null);
+  // Bỏ userProfile vì không còn sử dụng
   const [sortField, setSortField] = useState('eventDate');
   // Bỏ sortOrder, chỉ còn sortField
 
   useEffect(() => {
     fetchEvents();
-    fetchUserProfile();
+    // Bỏ fetchUserProfile vì không còn cần thiết
   }, []);
 
-  const fetchUserProfile = async () => {
-    try {
-      const user = getUser();
-      if (user && user.username) {
-        const response = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/User/profile', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUserProfile(data.user); // Lấy user object từ response
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching user profile:', err);
-    }
-  };
+  // Bỏ fetchUserProfile function vì không còn sử dụng
 
   const fetchEvents = async () => {
     try {
@@ -101,29 +83,13 @@ const Events = () => {
     }
   };
 
-  const canUserRegisterForEvent = (event) => {
-    // Nếu event không có bloodTypeRequired (null), tất cả nhóm máu đều có thể tham gia
-    if (!event.bloodTypeRequired) {
-      return true;
-    }
-    
-    // Nếu user chưa có profile hoặc không có bloodType, không cho phép đăng ký
-    if (!userProfile || !userProfile.bloodType) {
-      return false;
-    }
-    
-    // Kiểm tra bloodType của user có khớp với yêu cầu của event không
-    return userProfile.bloodType === event.bloodTypeRequired;
+  const canUserRegisterForEvent = () => {
+    // Bỏ kiểm tra nhóm máu - tất cả user đều có thể đăng ký
+    return true;
   };
 
   const handleRegisterEvent = async (eventId, eventTitle) => {
-    // Kiểm tra blood type trước khi cho phép đăng ký
-    const event = events.find(e => e.eventId === eventId);
-    if (event && !canUserRegisterForEvent(event)) {
-      setError(`Sự kiện này chỉ dành cho nhóm máu ${event.bloodTypeRequired}. Nhóm máu của bạn là ${userProfile?.bloodType || 'chưa cập nhật'}.`);
-      return;
-    }
-
+    // Bỏ kiểm tra blood type - cho phép tất cả user đăng ký
     // Lấy survey và mở modal
     try {
       setRegisteringEvents(prev => new Set(prev).add(eventId));
@@ -350,15 +316,6 @@ const Events = () => {
     if (sortField === 'eventDate') {
       // Ngày gần nhất lên đầu (tăng dần)
       return new Date(a.eventDate) - new Date(b.eventDate);
-    } else if (sortField === 'bloodTypeRequired') {
-      // Sort theo nhóm máu (A+ -> O-)
-      const bloodOrder = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-      const idxA = bloodOrder.indexOf(a.bloodTypeRequired || '');
-      const idxB = bloodOrder.indexOf(b.bloodTypeRequired || '');
-      if (idxA === -1 && idxB === -1) return 0;
-      if (idxA === -1) return 1;
-      if (idxB === -1) return -1;
-      return idxA - idxB;
     }
     return 0;
   });
@@ -442,14 +399,6 @@ const Events = () => {
             >
               Ngày gần nhất
             </button>
-            <button
-              type="button"
-              onClick={() => setSortField('bloodTypeRequired')}
-              className={`px-5 py-2 rounded-full border-2 text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
-                ${sortField === 'bloodTypeRequired' ? 'bg-red-600 text-white border-red-600 shadow' : 'bg-white text-gray-700 border-gray-200 hover:bg-red-50'}`}
-            >
-              Nhóm máu
-            </button>
           </div>
         </div>
 
@@ -519,17 +468,6 @@ const Events = () => {
                     <FaUsers className="text-red-500 mr-3 flex-shrink-0" />
                     <span className="line-clamp-1">Tối đa {event.maxParticipants} người tham gia</span>
                   </div>
-
-                  {/* Blood Type Requirement */}
-                  <div className="flex items-center text-gray-600">
-                    <FaTint className="text-red-500 mr-3 flex-shrink-0" />
-                    <span className="line-clamp-1">
-                      {event.bloodTypeRequired 
-                        ? `Nhóm máu: ${event.bloodTypeRequired}`
-                        : 'Tất cả nhóm máu'
-                      }
-                    </span>
-                  </div>
                 </div>
 
                 {/* Action Button */}
@@ -543,7 +481,7 @@ const Events = () => {
                     <div className="w-full bg-gray-300 text-gray-600 font-medium py-3 px-4 rounded-lg text-center">
                       Sự kiện đã kết thúc
                     </div>
-                  ) : !canUserRegisterForEvent(event) ? (
+                  ) : !canUserRegisterForEvent() ? (
                     <div className="w-full bg-yellow-100 text-yellow-800 font-medium py-3 px-4 rounded-lg text-center">
                       Không phù hợp nhóm máu
                     </div>
