@@ -25,6 +25,7 @@ import AdminUsers from './pages/AdminUsers';
 import AdminHospitals from './pages/AdminHospitals';
 import BloodDonorSearch from './pages/BloodDonorSearch';
 import AdminBloodSearch from './pages/AdminBloodSearch';
+import DeferralReasonManagement from './pages/DeferralReasonManagement';
 
 const queryClient = new QueryClient();
 
@@ -111,6 +112,11 @@ function App() {
               <Route path="/admin/blood-search" element={
                 <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
                   <AdminBloodSearch />
+                </RoleBasedRoute>
+              } />
+              <Route path="/deferral-reason-management" element={
+                <RoleBasedRoute allowedRoles={['Admin']}>
+                  <DeferralReasonManagement />
                 </RoleBasedRoute>
               } />
             </Routes>

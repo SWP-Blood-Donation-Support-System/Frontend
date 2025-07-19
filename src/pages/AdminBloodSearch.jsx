@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAuthToken } from '../utils/api';
-import { FaTint, FaUser, FaHospital, FaMapMarkerAlt, FaPhone, FaEnvelope, FaCalendarAlt, FaSearch, FaFilter, FaSort, FaSortUp, FaSortDown, FaExclamationTriangle, FaCheckCircle, FaInfoCircle } from 'react-icons/fa';
+import { FaTint, FaUser, FaHospital, FaMapMarkerAlt, FaPhone, FaEnvelope, FaCalendarAlt, FaSearch, FaFilter, FaSort, FaSortUp, FaSortDown, FaExclamationTriangle, FaCheckCircle, FaInfoCircle, FaClock, FaRoute, FaUserFriends, FaHeartbeat, FaShieldAlt, FaLocationArrow } from 'react-icons/fa';
 import Toast from '../components/Toast';
 
 const AdminBloodSearch = () => {
@@ -115,8 +115,9 @@ const AdminBloodSearch = () => {
 
       switch (filters.sortBy) {
         case 'distance': {
-          const aDistance = typeof a.distance === 'string' ? parseFloat(a.distance) : (a.distance || 0);
-          const bDistance = typeof b.distance === 'string' ? parseFloat(b.distance) : (b.distance || 0);
+          // Extract numeric value from distanceText (e.g., "19 km" -> 19)
+          const aDistance = a.distanceText ? parseFloat(a.distanceText.split(' ')[0]) : 0;
+          const bDistance = b.distanceText ? parseFloat(b.distanceText.split(' ')[0]) : 0;
           aValue = isNaN(aDistance) ? 0 : aDistance;
           bValue = isNaN(bDistance) ? 0 : bDistance;
           break;
@@ -126,12 +127,12 @@ const AdminBloodSearch = () => {
           bValue = b.bloodType || '';
           break;
         case 'date':
-          aValue = new Date(a.emergencyDate || a.lastDonationDate || 0);
-          bValue = new Date(b.emergencyDate || b.lastDonationDate || 0);
+          aValue = new Date(a.emergencyDate || a.dateOfBirth || 0);
+          bValue = new Date(b.emergencyDate || b.dateOfBirth || 0);
           break;
         default:
-          aValue = a.distance || 0;
-          bValue = b.distance || 0;
+          aValue = a.distanceText ? parseFloat(a.distanceText.split(' ')[0]) : 0;
+          bValue = b.distanceText ? parseFloat(b.distanceText.split(' ')[0]) : 0;
       }
 
       if (filters.sortOrder === 'asc') {
@@ -162,26 +163,94 @@ const AdminBloodSearch = () => {
   const filteredData = getFilteredData(currentData);
   const sortedData = getSortedData(filteredData);
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Đã xét duyệt':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'Chờ xét duyệt':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'Từ chối':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'Sẵn sàng hiến máu':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Active':
+        return 'bg-green-100 text-green-800 border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
+  };
+
+  const getBloodTypeColor = (bloodType) => {
+    const colors = {
+      'A+': 'bg-red-100 text-red-800 border-red-200',
+      'A-': 'bg-red-50 text-red-700 border-red-100',
+      'B+': 'bg-blue-100 text-blue-800 border-blue-200',
+      'B-': 'bg-blue-50 text-blue-700 border-blue-100',
+      'AB+': 'bg-purple-100 text-purple-800 border-purple-200',
+      'AB-': 'bg-purple-50 text-purple-700 border-purple-100',
+      'O+': 'bg-green-100 text-green-800 border-green-200',
+      'O-': 'bg-green-50 text-green-700 border-green-100'
+    };
+    return colors[bloodType] || 'bg-gray-100 text-gray-800 border-gray-200';
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-red-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-red-800 bg-clip-text text-transparent flex items-center gap-3">
-            <FaTint className="text-red-600" />
-            Tìm kiếm máu
-          </h1>
-          <p className="text-gray-600 mt-2">Quản lý và tìm kiếm người cần máu và người hiến máu</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center gap-3">
+                <FaHeartbeat className="text-red-600" />
+                Tìm kiếm máu
+              </h1>
+              <p className="text-lg text-gray-600">
+                Quản lý và tìm kiếm người cần máu và người hiến máu
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-red-600">{requests.length + donors.length}</div>
+              <div className="text-sm text-gray-600">Tổng số kết quả</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Người cần máu</p>
+                <p className="text-3xl font-bold text-red-600">{requests.length}</p>
+              </div>
+              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                <FaExclamationTriangle className="text-red-600 text-xl" />
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Người hiến máu</p>
+                <p className="text-3xl font-bold text-green-600">{donors.length}</p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <FaUserFriends className="text-green-600 text-xl" />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Tabs */}
         <div className="mb-6">
-          <div className="flex space-x-1 bg-white rounded-lg p-1 shadow-sm">
+          <div className="flex space-x-1 bg-white rounded-xl p-1 shadow-lg">
             <button
               onClick={() => setActiveTab('requests')}
-              className={`flex-1 py-2 px-4 rounded-md font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
+              className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-3 ${
                 activeTab === 'requests'
-                  ? 'bg-red-600 text-white shadow-md'
+                  ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md'
                   : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
               }`}
             >
@@ -190,10 +259,10 @@ const AdminBloodSearch = () => {
             </button>
             <button
               onClick={() => setActiveTab('donors')}
-              className={`flex-1 py-2 px-4 rounded-md font-medium transition-all duration-200 flex items-center justify-center gap-2 ${
+              className={`flex-1 py-3 px-6 rounded-lg font-semibold transition-all duration-200 flex items-center justify-center gap-3 ${
                 activeTab === 'donors'
-                  ? 'bg-red-600 text-white shadow-md'
-                  : 'text-gray-600 hover:text-red-600 hover:bg-red-50'
+                  ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-md'
+                  : 'text-gray-600 hover:text-green-600 hover:bg-green-50'
               }`}
             >
               <FaCheckCircle />
@@ -203,38 +272,44 @@ const AdminBloodSearch = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Nhóm máu</label>
-              <input
-                type="text"
-                placeholder="Tìm theo nhóm máu..."
-                value={filters.bloodType}
-                onChange={(e) => handleFilterChange('bloodType', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Nhóm máu</label>
+              <div className="relative">
+                <FaTint className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm theo nhóm máu..."
+                  value={filters.bloodType}
+                  onChange={(e) => handleFilterChange('bloodType', e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                />
+              </div>
             </div>
             <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Địa điểm</label>
-              <input
-                type="text"
-                placeholder="Tìm theo bệnh viện hoặc địa chỉ..."
-                value={filters.location}
-                onChange={(e) => handleFilterChange('location', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Địa điểm</label>
+              <div className="relative">
+                <FaMapMarkerAlt className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm theo bệnh viện hoặc địa chỉ..."
+                  value={filters.location}
+                  onChange={(e) => handleFilterChange('location', e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                />
+              </div>
             </div>
             <div className="flex gap-2">
               <button
                 onClick={() => handleSort('distance')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${
+                className={`px-4 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2 ${
                   filters.sortBy === 'distance'
-                    ? 'bg-red-600 text-white'
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                <FaSort />
+                <FaRoute />
                 Khoảng cách
                 {filters.sortBy === 'distance' && (
                   filters.sortOrder === 'asc' ? <FaSortUp /> : <FaSortDown />
@@ -242,9 +317,9 @@ const AdminBloodSearch = () => {
               </button>
               <button
                 onClick={() => handleSort('date')}
-                className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${
+                className={`px-4 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2 ${
                   filters.sortBy === 'date'
-                    ? 'bg-red-600 text-white'
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -260,10 +335,10 @@ const AdminBloodSearch = () => {
 
         {/* Error Message */}
         {error && (
-          <div className="bg-red-50 border-l-4 border-red-400 rounded-lg p-4 mb-6">
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
             <div className="flex items-center">
-              <FaExclamationTriangle className="text-red-500 mr-3" />
-              <p className="text-red-700 font-medium">{error}</p>
+              <FaExclamationTriangle className="h-5 w-5 text-red-400 mr-3" />
+              <p className="text-red-800 font-medium">{error}</p>
             </div>
           </div>
         )}
@@ -273,129 +348,200 @@ const AdminBloodSearch = () => {
           <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />
         )}
 
-        {/* Content: chỉ hiện 1 bảng theo tab */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-              <span className="ml-3 text-gray-600">Đang tải dữ liệu...</span>
+        {/* Content */}
+        {loading ? (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-16">
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-red-600 mx-auto mb-4"></div>
+              <div className="text-center">
+                <p className="text-gray-600 text-lg font-medium">Đang tải dữ liệu...</p>
+                <p className="text-gray-400 text-sm mt-2">Vui lòng chờ trong giây lát</p>
+              </div>
             </div>
-          ) : sortedData.length === 0 ? (
-            <div className="text-center py-16">
-              <FaInfoCircle className="text-gray-400 text-4xl mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">
+          </div>
+        ) : sortedData.length === 0 ? (
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-16">
+            <div className="text-center">
+              <FaInfoCircle className="text-gray-400 text-6xl mx-auto mb-6" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 {activeTab === 'requests' 
                   ? 'Không có người cần máu nào' 
                   : 'Không có người hiến máu nào'
                 }
+              </h3>
+              <p className="text-gray-500">
+                {error ? 'Vui lòng kiểm tra lại kết nối hoặc thử lại sau' : 'Hãy thử thay đổi bộ lọc tìm kiếm'}
               </p>
-              {error && (
-                <p className="text-sm text-gray-400 mt-2">Vui lòng kiểm tra lại kết nối hoặc thử lại sau</p>
-              )}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  {activeTab === 'requests' ? (
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã đơn</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên bệnh nhân</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày yêu cầu</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhóm máu</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Bệnh viện</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Địa chỉ BV</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Liên hệ</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khoảng cách</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                    </tr>
-                  ) : (
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Họ tên</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Username</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày sinh</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giới tính</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SĐT</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Địa chỉ</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhóm máu</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lần hiến gần nhất</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng số lần</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khoảng cách</th>
-                    </tr>
-                  )}
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {activeTab === 'requests'
-                    ? sortedData.map((item, index) => (
-                        <tr key={item.emergencyId || item.id || index} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-4 py-3">{item.emergencyId || item.id}</td>
-                          <td className="px-4 py-3">{item.patientName || 'Không có tên'}</td>
-                          <td className="px-4 py-3">{item.emergencyDate ? new Date(item.emergencyDate).toLocaleDateString('vi-VN') : ''}</td>
-                          <td className="px-4 py-3">{item.bloodType}</td>
-                          <td className="px-4 py-3">{item.requiredUnits} ml</td>
-                          <td className="px-4 py-3">{item.hospitalName}</td>
-                          <td className="px-4 py-3">{item.hospitalAddress}</td>
-                          <td className="px-4 py-3">
-                            <div className="space-y-1">
-                              <a href={`tel:${item.patientPhone}`} className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800">
-                                <FaPhone className="text-xs" />
-                                <span>{item.patientPhone}</span>
-                              </a>
-                              <a href={`mailto:${item.patientEmail}`} className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800">
-                                <FaEnvelope className="text-xs" />
-                                <span>{item.patientEmail}</span>
-                              </a>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">{item.distance}</td>
-                          <td className="px-4 py-3">
-                            {item.urgency && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border bg-yellow-100 text-yellow-800 border-yellow-200">
-                                <FaExclamationTriangle className="mr-1 text-xs" />
-                                {item.urgency}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))
-                    : sortedData.map((item, index) => (
-                        <tr key={index} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">{item.fullName}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{item.username}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{item.email}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{item.dateOfBirth ? new Date(item.dateOfBirth).toLocaleDateString('vi-VN') : ''}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{item.gender}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{item.phone}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{item.address}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{item.bloodType}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{item.profileStatus}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{item.lastDonationDate ? new Date(item.lastDonationDate).toLocaleDateString('vi-VN') : ''}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{item.totalDonations}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{item.distance}</td>
-                        </tr>
-                      ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Summary */}
-        <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">{requests.length}</div>
-              <div className="text-sm text-gray-600">Người cần máu</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{donors.length}</div>
-              <div className="text-sm text-gray-600">Người hiến máu</div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {activeTab === 'requests' 
+              ? sortedData.map((item, index) => (
+                  <div key={item.emergencyId || item.id || index} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 border-b border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
+                            <FaExclamationTriangle className="text-red-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{item.username}</h3>
+                            <p className="text-sm text-gray-600">Yêu cầu khẩn cấp</p>
+                          </div>
+                        </div>
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(item.emergencyStatus)}`}>
+                          {item.emergencyStatus}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-6 space-y-4">
+                      {/* Blood Type & Units */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold border ${getBloodTypeColor(item.bloodType)}`}>
+                            <FaTint className="mr-1" />
+                            {item.bloodType}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl font-bold text-red-600">{item.requiredUnits}</div>
+                          <div className="text-sm text-gray-600">đơn vị</div>
+                        </div>
+                      </div>
+
+                      {/* Date */}
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <FaCalendarAlt className="text-gray-400" />
+                        <span className="text-sm">
+                          {item.emergencyDate ? new Date(item.emergencyDate).toLocaleDateString('vi-VN') : 'Không có ngày'}
+                        </span>
+                      </div>
+
+                      {/* Hospital Info */}
+                      <div className="bg-gray-50 rounded-xl p-4">
+                        <div className="flex items-start gap-3">
+                          <FaHospital className="text-blue-600 mt-1" />
+                          <div className="flex-1">
+                            <h4 className="font-semibold text-gray-900 text-sm">{item.hospitalName}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{item.hospitalAddress}</p>
+                            {item.hospitalPhone && (
+                              <div className="flex items-center gap-2 mt-2">
+                                <FaPhone className="text-gray-400 text-xs" />
+                                <a href={`tel:${item.hospitalPhone}`} className="text-sm text-blue-600 hover:text-blue-800">
+                                  {item.hospitalPhone}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Distance & Duration */}
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <FaRoute className="text-gray-400" />
+                          <span>{item.distanceText}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <FaClock className="text-gray-400" />
+                          <span>{item.durationText}</span>
+                        </div>
+                      </div>
+
+                      {/* Note */}
+                      {item.emergencyNote && (
+                        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+                          <p className="text-sm text-yellow-800">{item.emergencyNote}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              : sortedData.map((item, index) => (
+                  <div key={index} className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+                    {/* Header */}
+                    <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 border-b border-gray-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                            <FaUser className="text-green-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{item.fullName}</h3>
+                            <p className="text-sm text-gray-600">@{item.username}</p>
+                          </div>
+                        </div>
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(item.profileStatus)}`}>
+                          {item.profileStatus}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-6 space-y-4">
+                      {/* Blood Type */}
+                      <div className="flex items-center justify-between">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold border ${getBloodTypeColor(item.bloodType)}`}>
+                          <FaTint className="mr-1" />
+                          {item.bloodType}
+                        </span>
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(item.status)}`}>
+                          <FaShieldAlt className="mr-1" />
+                          {item.status}
+                        </span>
+                      </div>
+
+                      {/* Personal Info */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <FaCalendarAlt className="text-gray-400" />
+                          <span>{item.dateOfBirth ? new Date(item.dateOfBirth).toLocaleDateString('vi-VN') : 'Không có ngày sinh'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <FaUser className="text-gray-400" />
+                          <span>{item.gender}</span>
+                        </div>
+                        {item.phone && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <FaPhone className="text-gray-400" />
+                            <a href={`tel:${item.phone}`} className="text-blue-600 hover:text-blue-800">
+                              {item.phone}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Address */}
+                      {item.address && (
+                        <div className="bg-gray-50 rounded-xl p-3">
+                          <div className="flex items-start gap-2">
+                            <FaMapMarkerAlt className="text-gray-400 mt-1" />
+                            <p className="text-sm text-gray-600">{item.address}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Distance & Duration */}
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <FaRoute className="text-gray-400" />
+                          <span>{item.distanceText}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <FaClock className="text-gray-400" />
+                          <span>{item.durationText}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))
+            }
+          </div>
+        )}
       </div>
     </div>
   );

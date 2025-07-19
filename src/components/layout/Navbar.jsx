@@ -347,6 +347,9 @@ const Navbar = () => {
                             <Link to="/admin/users" className="block px-4 py-2 text-gray-700 hover:bg-red-50" onClick={() => setAdminDropdownOpen(false)}>Danh sách user</Link>
                           )}
                           <Link to="/admin/hospitals" className="block px-4 py-2 text-gray-700 hover:bg-red-50" onClick={() => setAdminDropdownOpen(false)}>Quản lý bệnh viện</Link>
+                          {user?.role === 'Admin' && (
+                            <Link to="/deferral-reason-management" className="block px-4 py-2 text-gray-700 hover:bg-red-50" onClick={() => setAdminDropdownOpen(false)}>Quản lý lý do hoãn</Link>
+                          )}
                           <button onClick={() => { setAdminDropdownOpen(false); handleLogout(); }} className="w-full text-left px-4 py-2 text-gray-700 hover:bg-red-50">Đăng xuất</button>
                         </div>
                       )}

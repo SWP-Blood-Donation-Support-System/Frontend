@@ -38,7 +38,7 @@ const Events = () => {
       if (targetEvent && !isEventRegistered(eventId)) {
         // Tự động mở modal đăng ký cho sự kiện này
         handleRegisterEvent(eventId, targetEvent.eventTitle);
-      }
+          }
     }
   }, [events, location.search]);
 
@@ -101,7 +101,7 @@ const Events = () => {
 
   const canUserRegisterForEvent = () => {
     // Bỏ kiểm tra nhóm máu - tất cả user đều có thể đăng ký
-    return true;
+      return true;
   };
 
   const handleRegisterEvent = async (eventId, eventTitle) => {

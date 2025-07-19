@@ -310,10 +310,10 @@ const AppointmentHistory = () => {
       case 'chờ xử lý':
         return (
           <div className="flex flex-col items-start">
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-              <FaClock className="mr-1" />
-              Chờ xử lý
-            </span>
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+            <FaClock className="mr-1" />
+            Chờ xử lý
+          </span>
             {staffNote && staffNote !== 'Chưa có' && (
               <div className="mt-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg max-w-xs">
                 <div className="flex items-start">
@@ -329,10 +329,10 @@ const AppointmentHistory = () => {
       case 'đã đăng ký':
         return (
           <div className="flex flex-col items-start">
-            <span className=" inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 ">
-              <FaCheckCircle className="mr-1" />
-              Đã đăng ký
-            </span>
+          <span className=" inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 ">
+            <FaCheckCircle className="mr-1" />
+            Đã đăng ký
+          </span>
             {staffNote && staffNote !== 'Chưa có' && (
               <div className="mt-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg max-w-xs">
                 <div className="flex items-start">
@@ -400,9 +400,9 @@ const AppointmentHistory = () => {
       default:
         return (
           <div className="flex flex-col items-start">
-            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-              {status || 'Không xác định'}
-            </span>
+          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+            {status || 'Không xác định'}
+          </span>
             {staffNote && staffNote !== 'Chưa có' && (
               <div className="mt-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg max-w-xs">
                 <div className="flex items-start">
