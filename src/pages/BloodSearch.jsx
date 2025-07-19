@@ -29,7 +29,7 @@ const BloodSearch = () => {
     setError('');
     setHasSearched(true);
     try {
-      const response = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Search/requests/all', {
+      const response = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Search/requests/v2', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -42,6 +42,7 @@ const BloodSearch = () => {
       }
 
       const data = await response.json();
+      console.log('Blood Search API Response:', data);
       let filteredResults = data.bloodRequests || [];
 
       if (filters.bloodType !== 'Tất cả') {

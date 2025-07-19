@@ -45,7 +45,7 @@ const AdminBloodSearch = () => {
         throw new Error('Không có token xác thực');
       }
 
-      const response = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Search/requests/all', {
+      const response = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Search/requests/v2', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -59,7 +59,7 @@ const AdminBloodSearch = () => {
       }
 
       const data = await response.json();
-      console.log('Requests data:', data);
+      console.log('Admin Blood Search - Requests API Response:', data);
       const requestsData = data.bloodRequests || data || [];
       setRequests(Array.isArray(requestsData) ? requestsData : []);
     } catch (err) {
@@ -75,7 +75,7 @@ const AdminBloodSearch = () => {
       if (!token) {
         throw new Error('Không có token xác thực');
       }
-      const response = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Search/donors/all', {
+      const response = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Search/donors/v2', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -86,6 +86,7 @@ const AdminBloodSearch = () => {
         throw new Error(`Lỗi API: ${response.status} - ${errorText}`);
       }
       const data = await response.json();
+      console.log('Admin Blood Search - Donors API Response:', data);
       const donorsData = Array.isArray(data.donors) ? data.donors : (Array.isArray(data.bloodDonors) ? data.bloodDonors : []);
       setDonors(donorsData);
     } catch (err) {

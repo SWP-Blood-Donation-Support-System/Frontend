@@ -30,7 +30,8 @@ const BloodDonorSearch = () => {
         }
       };
       // Gọi đúng API người hiến máu
-      const response = await axios.get('/api/Search/donors/all', axiosConfig);
+      const response = await axios.get('/api/Search/donors/v2', axiosConfig);
+      console.log('Blood Donor Search API Response:', response.data);
       setSearchResults(response.data.donors || []);
     } catch {
       setError('Có lỗi xảy ra khi tìm kiếm.');

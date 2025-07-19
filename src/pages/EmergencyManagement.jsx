@@ -8,8 +8,8 @@ const EmergencyManagement = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [sortField, setSortField] = useState('emergencyDate');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [sortField, setSortField] = useState('emergencyStatus');
+  const [sortOrder, setSortOrder] = useState('asc');
   const [approvalStatus, setApprovalStatus] = useState('');
   const [selectedEmergency, setSelectedEmergency] = useState(null);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
@@ -205,6 +205,29 @@ const EmergencyManagement = () => {
   });
 
   const sorted = [...filtered].sort((a, b) => {
+    // Nếu sortField là emergencyStatus, sử dụng thứ tự tùy chỉnh
+    if (sortField === 'emergencyStatus') {
+      const statusOrder = {
+        'Chờ xét duyệt': 1,
+        'Đã xét duyệt': 2,
+        'Lượng máu đang được chuyển đến': 3,
+        'Đã được đáp ứng': 4,
+        'Từ chối': 5,
+        'Đã quá hạn': 6
+      };
+      
+      const aStatus = a.emergencyStatus || 'Chờ xét duyệt';
+      const bStatus = b.emergencyStatus || 'Chờ xét duyệt';
+      
+      const aOrder = statusOrder[aStatus] || 999;
+      const bOrder = statusOrder[bStatus] || 999;
+      
+      if (aOrder !== bOrder) {
+        return sortOrder === 'asc' ? aOrder - bOrder : bOrder - aOrder;
+      }
+    }
+    
+    // Xử lý các trường khác như bình thường
     let v1 = a[sortField], v2 = b[sortField];
     if (sortField === 'emergencyDate' || sortField === 'endDate') {
       v1 = v1 ? new Date(v1) : 0;
@@ -313,9 +336,14 @@ const EmergencyManagement = () => {
           Quản lý đơn khẩn cấp
         </h2>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8 w-full">
-          <div className="flex items-center gap-2 w-full md:w-1/2 bg-white rounded-xl px-4 py-3 border border-gray-200 shadow-sm">
-            <FaSearch className="text-gray-400 text-lg" />
-            <input value={search} onChange={handleSearch} placeholder="Tìm kiếm theo tên, nhóm máu, bệnh viện, ghi chú..." className="input w-full bg-transparent border-0 focus:ring-0 text-base" />
+          <div className="flex flex-col gap-2 w-full md:w-1/2">
+            <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-3 border border-gray-200 shadow-sm">
+              <FaSearch className="text-gray-400 text-lg" />
+              <input value={search} onChange={handleSearch} placeholder="Tìm kiếm theo tên, nhóm máu, bệnh viện, ghi chú..." className="input w-full bg-transparent border-0 focus:ring-0 text-base" />
+            </div>
+            {/* <div className="text-xs text-gray-500 bg-blue-50 px-3 py-1 rounded-lg border border-blue-200">
+              <strong>Thứ tự mặc định:</strong> Chờ xét duyệt → Đã xét duyệt → Đang chuyển máu → Đã đáp ứng → Từ chối → Đã quá hạn
+            </div> */}
           </div>
           <div className="flex gap-3 items-center w-full md:w-auto">
             <select
@@ -360,7 +388,7 @@ const EmergencyManagement = () => {
                   <th className="px-6 py-4 text-center font-bold"><FaUser className="inline mr-1 text-red-500"/>Người tạo</th>
                   <th className="px-6 py-4 text-center font-bold cursor-pointer" onClick={()=>handleSort('emergencyDate')}> <span className="flex items-center justify-center gap-1"> <FaCalendarAlt className="inline text-red-500"/>Ngày tạo {sortField==='emergencyDate' && (sortOrder==='asc'?<FaSortUp/>:<FaSortDown/>)} </span></th>
                   <th className="px-6 py-4 text-center font-bold"><FaTint className="inline mr-1 text-red-500"/>Nhóm máu</th>
-                  <th className="px-6 py-4 text-center font-bold cursor-pointer" onClick={()=>handleSort('emergencyStatus')}> <span className="flex items-center justify-center gap-1">Trạng thái {sortField==='emergencyStatus' && (sortOrder==='asc'?<FaSortUp/>:<FaSortDown/>)} </span></th>
+                  <th className="px-6 py-4 text-center font-bold cursor-pointer" onClick={()=>handleSort('emergencyStatus')}> <span className="flex items-center justify-center gap-1">Trạng thái {sortField==='emergencyStatus' && (sortOrder==='asc'?<FaSortUp/>:<FaSortDown/>)} {sortField==='emergencyStatus' && <span className="text-xs text-blue-600">(Mặc định)</span>}</span></th>
                   <th className="px-6 py-4 text-center font-bold"><FaHospital className="inline mr-1 text-red-500"/>Bệnh viện</th>
                   <th className="px-6 py-4 text-center font-bold">Thao tác</th>
                 </tr>
