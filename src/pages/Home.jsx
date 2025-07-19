@@ -87,10 +87,7 @@ const Home = () => {
     { number: '24/7', label: 'Hỗ trợ', icon: <FaClock className="w-5 h-5" /> },
   ];
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('vi-VN');
-  };
+ 
 
   return (
     <div className="min-h-screen bg-gray-50">

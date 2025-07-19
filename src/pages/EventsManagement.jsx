@@ -1016,27 +1016,29 @@ const EventsManagement = () => {
                 </div>
               </div>
 
-              {/* Status Selector moved to bottom */}
-              <div className="flex gap-2 justify-end border-t pt-6 mt-2">
-                {["Public", "Private", "Cancel"].map((status) => (
-                  <button
-                    key={status}
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, eventStatus: status }))}
-                    className={`px-5 py-2 rounded-full border-2 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
-                      ${formData.eventStatus === status
-                        ? status === "Public"
-                          ? "bg-green-100 text-green-700 border-green-400 shadow"
-                          : status === "Private"
-                          ? "bg-yellow-100 text-yellow-700 border-yellow-400 shadow"
-                          : "bg-gray-100 text-gray-700 border-gray-400 shadow"
-                        : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"}
-                    `}
-                  >
-                    {status}
-                  </button>
-                ))}
-              </div>
+              {/* Status Selector chỉ hiển thị khi cập nhật */}
+              {isEditing && (
+                <div className="flex gap-2 justify-end border-t pt-6 mt-2">
+                  {["Public", "Private", "Cancel"].map((status) => (
+                    <button
+                      key={status}
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, eventStatus: status }))}
+                      className={`px-5 py-2 rounded-full border-2 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-200
+                        ${formData.eventStatus === status
+                          ? status === "Public"
+                            ? "bg-green-100 text-green-700 border-green-400 shadow"
+                            : status === "Private"
+                            ? "bg-yellow-100 text-yellow-700 border-yellow-400 shadow"
+                            : "bg-gray-100 text-gray-700 border-gray-400 shadow"
+                          : "bg-white text-gray-500 border-gray-200 hover:bg-gray-50"}
+                      `}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Submit Button */}
               <div className="flex justify-end pt-4">
