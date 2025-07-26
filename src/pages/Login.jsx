@@ -82,25 +82,41 @@ const Login = () => {
   };
 
   useEffect(() => {
-    if (window.google && window.google.accounts) {
-      window.google.accounts.id.initialize({
-        client_id: '78348296273-co8unhaomb7kh3mqjsckad62km60mc5a.apps.googleusercontent.com', // TODO: Replace with your Google Client ID
-        callback: (response) => {
-          // Decode JWT to get email
-          const base64Url = response.credential.split('.')[1];
-          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-          const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-          }).join(''));
-          const payload = JSON.parse(jsonPayload);
-          handleGoogleLogin({ email: payload.email, credential: response.credential });
-        },
-      });
-      window.google.accounts.id.renderButton(
-        document.getElementById('google-login-btn'),
-        { theme: 'outline', size: 'large', width: '100%' }
-      );
-    }
+    const initializeGoogleLogin = () => {
+      if (window.google && window.google.accounts) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: '78348296273-co8unhaomb7kh3mqjsckad62km60mc5a.apps.googleusercontent.com',
+            callback: (response) => {
+              // Decode JWT to get email
+              const base64Url = response.credential.split('.')[1];
+              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+              const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+              }).join(''));
+              const payload = JSON.parse(jsonPayload);
+              handleGoogleLogin({ email: payload.email, credential: response.credential });
+            },
+          });
+          
+          const buttonElement = document.getElementById('google-login-btn');
+          if (buttonElement) {
+            window.google.accounts.id.renderButton(
+              buttonElement,
+              { theme: 'outline', size: 'large', width: '100%' }
+            );
+          }
+        } catch (error) {
+          console.error('Error initializing Google login:', error);
+        }
+      } else {
+        // Retry after a short delay if Google script hasn't loaded yet
+        setTimeout(initializeGoogleLogin, 100);
+      }
+    };
+
+    // Start initialization
+    initializeGoogleLogin();
   }, []);
 
   return (
