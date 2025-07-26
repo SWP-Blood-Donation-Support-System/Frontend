@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash, FaHeartbeat } from 'react-icons/fa';
-import { loginUser, setAuthToken, setUser } from '../utils/api';
+import { loginUser, setAuthToken, setUser, googleLogin } from '../utils/api';
 import Toast from '../components/Toast';
+import { useEffect } from 'react';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -54,6 +55,53 @@ const Login = () => {
       setIsLoading(false);
     }
   };
+
+  const handleGoogleLogin = async (googleUser) => {
+    setError('');
+    setIsLoading(true);
+    try {
+      const email = googleUser.email;
+      const googleToken = googleUser.credential;
+      const data = await googleLogin(email, googleToken);
+      if (data.token) {
+        setAuthToken(data.token);
+      }
+      if (data.user) {
+        setUser(data.user);
+      }
+      setShowSuccess(true);
+      window.dispatchEvent(new Event('authStateChanged'));
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 1500);
+    } catch (err) {
+      setError(err.message || 'Đăng nhập Google thất bại.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (window.google && window.google.accounts) {
+      window.google.accounts.id.initialize({
+        client_id: '78348296273-co8unhaomb7kh3mqjsckad62km60mc5a.apps.googleusercontent.com', // TODO: Replace with your Google Client ID
+        callback: (response) => {
+          // Decode JWT to get email
+          const base64Url = response.credential.split('.')[1];
+          const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+          const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+          }).join(''));
+          const payload = JSON.parse(jsonPayload);
+          handleGoogleLogin({ email: payload.email, credential: response.credential });
+        },
+      });
+      window.google.accounts.id.renderButton(
+        document.getElementById('google-login-btn'),
+        { theme: 'outline', size: 'large', width: '100%' }
+      );
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -188,6 +236,9 @@ const Login = () => {
                   'Đăng nhập'
                 )}
               </button>
+            </div>
+            <div className="mt-4 flex flex-col items-center">
+              <div id="google-login-btn" className="w-full flex justify-center"></div>
             </div>
           </form>
         </div>

@@ -1720,3 +1720,37 @@ export const getUserReports = async () => {
     throw error;
   }
 }; 
+
+// Google Login API call
+export const googleLogin = async (email, googleToken) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/User/google-login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, googleToken }),
+    });
+
+    const contentType = response.headers.get('content-type');
+    let data;
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = await response.text();
+    }
+
+    if (!response.ok) {
+      throw new Error(data.message || `Lỗi đăng nhập Google: ${response.status}`);
+    }
+
+    if (!data.token) {
+      throw new Error('Response không chứa token. Vui lòng thử lại.');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Google login error:', error);
+    throw error;
+  }
+}; 
