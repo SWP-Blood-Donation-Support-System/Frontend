@@ -1724,6 +1724,12 @@ export const getUserReports = async () => {
 // Google Login API call
 export const googleLogin = async (email, googleToken) => {
   try {
+    console.log('Google login request:', { email, tokenLength: googleToken?.length });
+    
+    if (!email || !googleToken) {
+      throw new Error('Email và Google token là bắt buộc');
+    }
+
     const response = await fetch(`${API_BASE_URL}/User/google-login`, {
       method: 'POST',
       headers: {
@@ -1732,25 +1738,46 @@ export const googleLogin = async (email, googleToken) => {
       body: JSON.stringify({ email, googleToken }),
     });
 
+    console.log('Google login response status:', response.status);
+
     const contentType = response.headers.get('content-type');
     let data;
+    
     if (contentType && contentType.includes('application/json')) {
       data = await response.json();
     } else {
       data = await response.text();
+      console.log('Non-JSON response:', data);
     }
 
     if (!response.ok) {
-      throw new Error(data.message || `Lỗi đăng nhập Google: ${response.status}`);
+      console.error('Google login error response:', data);
+      
+      if (response.status === 400) {
+        throw new Error(data.message || 'Token Google không hợp lệ');
+      } else if (response.status === 500) {
+        throw new Error(data.message || 'Lỗi máy chủ. Vui lòng thử lại sau.');
+      } else if (response.status === 401) {
+        throw new Error(data.message || 'Xác thực Google thất bại');
+      } else {
+        throw new Error(data.message || `Lỗi đăng nhập Google: ${response.status}`);
+      }
     }
 
     if (!data.token) {
       throw new Error('Response không chứa token. Vui lòng thử lại.');
     }
 
+    console.log('Google login successful');
     return data;
   } catch (error) {
-    console.error('Google login error:', error);
+    console.error('Google login error details:', error);
+    
+    // Handle network errors
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối internet.');
+    }
+    
     throw error;
   }
 }; 

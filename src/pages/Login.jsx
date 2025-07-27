@@ -62,20 +62,37 @@ const Login = () => {
     try {
       const email = googleUser.email;
       const googleToken = googleUser.credential;
+      
+      console.log('Attempting Google login with:', { email, tokenLength: googleToken.length });
+      
       const data = await googleLogin(email, googleToken);
+      
       if (data.token) {
         setAuthToken(data.token);
       }
       if (data.user) {
         setUser(data.user);
       }
+      
       setShowSuccess(true);
       window.dispatchEvent(new Event('authStateChanged'));
+      
       setTimeout(() => {
         navigate('/dashboard');
       }, 1500);
     } catch (err) {
-      setError(err.message || 'Đăng nhập Google thất bại.');
+      console.error('Google login error:', err);
+      
+      // Handle specific error cases
+      if (err.message.includes('Invalid Google token')) {
+        setError('Token Google không hợp lệ. Vui lòng thử lại hoặc đăng nhập bằng username/password.');
+      } else if (err.message.includes('Internal server error')) {
+        setError('Lỗi máy chủ. Vui lòng thử lại sau hoặc liên hệ quản trị viên.');
+      } else if (err.message.includes('Network')) {
+        setError('Lỗi kết nối. Vui lòng kiểm tra internet và thử lại.');
+      } else {
+        setError(err.message || 'Đăng nhập Google thất bại. Vui lòng thử lại.');
+      }
     } finally {
       setIsLoading(false);
     }

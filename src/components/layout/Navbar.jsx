@@ -273,8 +273,7 @@ const Navbar = () => {
                             <div className="divide-y divide-gray-100">
                               {notifications.map((notification) => {
                                 const hasUnresponded = notification.recipients?.some(r => r.responseStatus === 'Chưa phản hồi');
-                                const acceptedCount = notification.recipients?.filter(r => r.responseStatus === 'Chấp nhận').length || 0;
-                                const totalRecipients = notification.recipients?.length || 0;
+                                
                                 
                                 return (
                                   <div
@@ -297,16 +296,8 @@ const Navbar = () => {
                                           <span>🩸 {notification.bloodType} ({notification.requiredUnits} đơn vị)</span>
                                         </div>
                                         <div className="mt-2 text-xs">
-                                          <span className={`px-2 py-1 rounded-full ${
-                                            hasUnresponded 
-                                              ? 'bg-yellow-100 text-yellow-800' 
-                                              : 'bg-green-100 text-green-800'
-                                          }`}>
-                                            {hasUnresponded ? 'Chờ phản hồi' : 'Đã hoàn thành'}
-                                          </span>
-                                          <span className="ml-2 text-gray-500">
-                                            {acceptedCount}/{totalRecipients} đã chấp nhận
-                                          </span>
+                                          
+                                         
                                         </div>
                                       </div>
                                       {hasUnresponded && (
