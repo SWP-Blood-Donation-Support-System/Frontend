@@ -126,6 +126,8 @@ const BloodSearch = () => {
               </div>
               <h3 className="text-2xl font-bold text-gray-900 mb-2">Bộ Lọc Tìm Kiếm</h3>
               <p className="text-gray-600">Tùy chỉnh tiêu chí tìm kiếm yêu cầu máu</p>
+              
+
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -239,28 +241,7 @@ const BloodSearch = () => {
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <FaInfoCircle className="text-gray-400 text-2xl mx-auto mb-2" />
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Không có kết quả</h3>
-            <p className="text-gray-600 text-sm mb-4">Hiện tại không có yêu cầu máu nào phù hợp với tiêu chí tìm kiếm.</p>
-            
-            {/* Debug Information */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
-              <h4 className="text-sm font-semibold text-blue-800 mb-2">Thông tin tìm kiếm:</h4>
-              <div className="text-xs text-blue-700 space-y-1">
-                <div>• Điểm tham chiếu: 7 Đ. D1, Long Thạnh Mỹ, Thủ Đức</div>
-                <div>• Khoảng cách tối đa: {filters.maxDistance}km</div>
-                <div>• Nhóm máu: {filters.bloodType}</div>
-                <div>• Trạng thái: Đã xét duyệt</div>
-                <div>• Tổng số yêu cầu: 0</div>
-              </div>
-            </div>
-            
-            <div className="mt-4 text-sm text-gray-500">
-              <p>💡 Gợi ý:</p>
-              <ul className="text-left mt-2 space-y-1">
-                <li>• Thử tăng khoảng cách tìm kiếm</li>
-                <li>• Chọn "Tất cả" nhóm máu</li>
-                <li>• Liên hệ bệnh viện trực tiếp</li>
-              </ul>
-            </div>
+            <p className="text-gray-600 text-sm">Hiện tại không có yêu cầu máu nào phù hợp với tiêu chí tìm kiếm.</p>
           </div>
         )}
 

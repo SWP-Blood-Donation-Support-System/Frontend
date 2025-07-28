@@ -623,6 +623,8 @@ const EmergencyRequests = () => {
               </div>
               <h1 className="mt-4 text-3xl font-bold text-gray-900">Đơn Khẩn Cấp</h1>
               <p className="mt-2 text-gray-600">Tạo và quản lý yêu cầu hiến máu khẩn cấp</p>
+              
+
             </div>
 
             {/* Tabs */}
