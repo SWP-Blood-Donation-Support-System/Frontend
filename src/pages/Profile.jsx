@@ -55,6 +55,27 @@ const Profile = () => {
 
   const onSubmit = async (data) => {
     try {
+      // Kiểm tra tuổi trước khi submit
+      if (data.dateOfBirth) {
+        const today = new Date();
+        const birthDate = new Date(data.dateOfBirth);
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        
+        // Tính tuổi chính xác
+        let actualAge = age;
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          actualAge--;
+        }
+        
+        if (actualAge < 18) {
+          setToastMessage('Bạn phải từ 18 tuổi trở lên để hiến máu!');
+          setToastType('error');
+          setShowToast(true);
+          return; // Dừng submit
+        }
+      }
+
       const profileData = {
         username: userData.username,
         fullName: data.fullName,
@@ -221,11 +242,36 @@ const Profile = () => {
                   <input
                   type="date"
                   defaultValue={userData.dateOfBirth || ''}
-                  {...register('dateOfBirth', { required: 'Vui lòng nhập ngày sinh' })}
+                  {...register('dateOfBirth', { 
+                    required: 'Vui lòng nhập ngày sinh',
+                    validate: (value) => {
+                      if (!value) return true; // Skip validation if empty (handled by required)
+                      
+                      const today = new Date();
+                      const birthDate = new Date(value);
+                      const age = today.getFullYear() - birthDate.getFullYear();
+                      const monthDiff = today.getMonth() - birthDate.getMonth();
+                      
+                      // Tính tuổi chính xác
+                      let actualAge = age;
+                      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+                        actualAge--;
+                      }
+                      
+                      if (actualAge < 18) {
+                        return 'Bạn phải từ 18 tuổi trở lên để hiến máu';
+                      }
+                      
+                      return true;
+                    }
+                  })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 />
                 {errors.dateOfBirth && (
-                  <p className="mt-1 text-sm text-red-600">{errors.dateOfBirth.message}</p>
+                  <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <FaInfoCircle className="mr-1 text-xs" />
+                    {errors.dateOfBirth.message}
+                  </p>
                 )}
                 </div>
 
