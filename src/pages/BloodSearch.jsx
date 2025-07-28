@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FaSearch, FaMapMarkerAlt, FaTint, FaPhone, FaEnvelope, FaHospital, FaUser, FaCalendarAlt, FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa';
+import { FaSearch, FaMapMarkerAlt, FaTint, FaPhone, FaEnvelope, FaHospital, FaUser, FaCalendarAlt, FaExclamationTriangle, FaInfoCircle, FaCheckCircle } from 'react-icons/fa';
 import { getAuthToken, getUser } from '../utils/api';
 
 const BloodSearch = () => {
@@ -52,7 +52,7 @@ const BloodSearch = () => {
       }
 
       filteredResults = filteredResults.filter(result => {
-        const distanceStr = result.distance || '';
+        const distanceStr = result.distanceText || '';
         const distanceNum = parseFloat(distanceStr.replace(/[^\d.]/g, ''));
         return distanceNum <= filters.maxDistance;
       });
@@ -63,19 +63,6 @@ const BloodSearch = () => {
       setSearchResults([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getUrgencyColor = (urgency) => {
-    switch (urgency?.toLowerCase()) {
-      case 'khẩn cấp':
-      case 'emergency':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'cấp bách':
-      case 'urgent':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
-      default:
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     }
   };
 
@@ -132,58 +119,108 @@ const BloodSearch = () => {
 
         {/* Filter Section */}
         {isAllowed && (
-          <div className="bg-white rounded-lg shadow p-6 mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Bộ lọc tìm kiếm</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gradient-to-r from-white to-gray-50 rounded-2xl shadow-xl p-8 mb-8 border border-gray-100">
+            <div className="text-center mb-6">
+              <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-full p-3 w-12 h-12 mx-auto flex items-center justify-center mb-3">
+                <FaSearch className="text-white text-lg" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Bộ Lọc Tìm Kiếm</h3>
+              <p className="text-gray-600">Tùy chỉnh tiêu chí tìm kiếm yêu cầu máu</p>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Blood Type Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nhóm máu
-                </label>
+              <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="bg-red-100 rounded-full p-2">
+                    <FaTint className="text-red-600" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900">
+                      Nhóm Máu
+                    </label>
+                    <p className="text-xs text-gray-500">Chọn nhóm máu cần tìm</p>
+                  </div>
+                </div>
                 <select
                   value={filters.bloodType}
                   onChange={(e) => handleFilterChange('bloodType', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 bg-gray-50 hover:bg-white transition-colors duration-200"
                 >
-                  <option value="Tất cả">Tất cả</option>
-                  <option value="A+">A+</option>
-                  <option value="A-">A-</option>
-                  <option value="B+">B+</option>
-                  <option value="B-">B-</option>
-                  <option value="AB+">AB+</option>
-                  <option value="AB-">AB-</option>
-                  <option value="O+">O+</option>
-                  <option value="O-">O-</option>
+                  <option value="Tất cả">🩸 Tất cả nhóm máu</option>
+                  <option value="A+">🩸 A+</option>
+                  <option value="A-">🩸 A-</option>
+                  <option value="B+">🩸 B+</option>
+                  <option value="B-">🩸 B-</option>
+                  <option value="AB+">🩸 AB+</option>
+                  <option value="AB-">🩸 AB-</option>
+                  <option value="O+">🩸 O+</option>
+                  <option value="O-">🩸 O-</option>
                 </select>
               </div>
 
               {/* Distance Filter */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Khoảng cách tối đa
-                </label>
+              <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="bg-blue-100 rounded-full p-2">
+                    <FaMapMarkerAlt className="text-blue-600" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900">
+                      Khoảng Cách
+                    </label>
+                    <p className="text-xs text-gray-500">Bán kính tìm kiếm tối đa</p>
+                  </div>
+                </div>
                 <select
                   value={filters.maxDistance}
                   onChange={(e) => handleFilterChange('maxDistance', parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 hover:bg-white transition-colors duration-200"
                 >
-                  <option value={10}>Dưới 10km</option>
-                  <option value={20}>Dưới 20km</option>
-                  <option value={50}>Dưới 50km</option>
-                  <option value={100}>Dưới 100km</option>
-                  <option value={200}>Dưới 200km</option>
+                  <option value={10}>📍 Dưới 10km</option>
+                  <option value={20}>📍 Dưới 20km</option>
+                  <option value={50}>📍 Dưới 50km</option>
+                  <option value={100}>📍 Dưới 100km</option>
+                  <option value={200}>📍 Dưới 200km</option>
                 </select>
               </div>
 
               {/* Search Button */}
-              <div className="flex items-end">
+              <div className="bg-white rounded-xl p-6 shadow-md border border-gray-100">
+                <div className="flex items-center space-x-3 mb-4">
+                  <div className="bg-green-100 rounded-full p-2">
+                    <FaSearch className="text-green-600" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900">
+                      Tìm Kiếm
+                    </label>
+                    <p className="text-xs text-gray-500">Thực hiện tìm kiếm</p>
+                  </div>
+                </div>
                 <button
                   onClick={handleSearch}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors duration-200 flex items-center justify-center space-x-2"
+                  className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-semibold py-3 px-6 rounded-lg transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:scale-105"
                 >
-                  <FaSearch className="text-sm" />
-                  <span>Tìm kiếm</span>
+                  <FaSearch className="text-lg" />
+                  <span>Tìm Kiếm Ngay</span>
                 </button>
+              </div>
+            </div>
+
+            {/* Current Filters Display */}
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <span className="text-sm text-gray-500">Bộ lọc hiện tại:</span>
+                <span className="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
+                  🩸 {filters.bloodType}
+                </span>
+                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                  📍 Dưới {filters.maxDistance}km
+                </span>
+                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                  ✅ Đã xét duyệt
+                </span>
               </div>
             </div>
           </div>
@@ -197,126 +234,178 @@ const BloodSearch = () => {
           </div>
         )}
 
-        {/* Search Results */}
+        {/* No Results */}
         {hasSearched && !loading && searchResults.length === 0 && (
           <div className="bg-white rounded-lg shadow p-6 text-center">
             <FaInfoCircle className="text-gray-400 text-2xl mx-auto mb-2" />
             <h3 className="text-lg font-semibold text-gray-900 mb-1">Không có kết quả</h3>
-            <p className="text-gray-600 text-sm">Hiện tại không có yêu cầu máu nào.</p>
+            <p className="text-gray-600 text-sm mb-4">Hiện tại không có yêu cầu máu nào phù hợp với tiêu chí tìm kiếm.</p>
+            
+            {/* Debug Information */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left">
+              <h4 className="text-sm font-semibold text-blue-800 mb-2">Thông tin tìm kiếm:</h4>
+              <div className="text-xs text-blue-700 space-y-1">
+                <div>• Điểm tham chiếu: 7 Đ. D1, Long Thạnh Mỹ, Thủ Đức</div>
+                <div>• Khoảng cách tối đa: {filters.maxDistance}km</div>
+                <div>• Nhóm máu: {filters.bloodType}</div>
+                <div>• Trạng thái: Đã xét duyệt</div>
+                <div>• Tổng số yêu cầu: 0</div>
+              </div>
+            </div>
+            
+            <div className="mt-4 text-sm text-gray-500">
+              <p>💡 Gợi ý:</p>
+              <ul className="text-left mt-2 space-y-1">
+                <li>• Thử tăng khoảng cách tìm kiếm</li>
+                <li>• Chọn "Tất cả" nhóm máu</li>
+                <li>• Liên hệ bệnh viện trực tiếp</li>
+              </ul>
+            </div>
           </div>
         )}
 
-        {/* Compact Table Layout */}
+        {/* Search Results */}
         {!loading && searchResults.length > 0 && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Thông tin
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nhóm máu
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Số lượng
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Bệnh viện
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Liên hệ
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Khoảng cách
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Trạng thái
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {searchResults.map((result) => (
-                    <tr key={result.emergencyId || result.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center space-x-3">
-                          <div className="bg-red-100 rounded-full p-2">
-                            <FaUser className="text-red-600 text-sm" />
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              #{result.emergencyId || result.id}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              {result.patientName || 'Không có tên'}
-                            </div>
-                            <div className="text-xs text-gray-400">
-                              {new Date(result.emergencyDate).toLocaleDateString('vi-VN')}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center space-x-2">
-                          <FaTint className="text-red-500 text-sm" />
-                          <span className="text-sm font-semibold text-red-600">
-                            {result.bloodType}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-sm font-medium text-gray-900">
-                          {result.requiredUnits} ml
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="text-sm">
-                          <div className="font-medium text-gray-900">{result.hospitalName}</div>
-                          <div className="text-xs text-gray-500 flex items-center space-x-1">
-                            <FaMapMarkerAlt className="text-gray-400" />
-                            <span>{result.hospitalAddress}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="space-y-1">
-                          <a
-                            href={`tel:${result.patientPhone}`}
-                            className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800"
-                          >
-                            <FaPhone className="text-xs" />
-                            <span>{result.patientPhone}</span>
-                          </a>
-                          <a
-                            href={`mailto:${result.patientEmail}`}
-                            className="flex items-center space-x-1 text-xs text-blue-600 hover:text-blue-800"
-                          >
-                            <FaEnvelope className="text-xs" />
-                            <span>{result.patientEmail}</span>
-                          </a>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center space-x-1">
-                          <FaMapMarkerAlt className="text-gray-400 text-xs" />
-                          <span className="text-sm text-gray-900">{result.distance}</span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        {result.urgency && (
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getUrgencyColor(result.urgency)}`}>
-                            <FaExclamationTriangle className="mr-1 text-xs" />
-                            {result.urgency}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <>
+            {/* Results Summary */}
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg shadow-lg p-6 mb-6 border border-green-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-green-100 rounded-full p-3">
+                    <FaSearch className="text-green-600 text-lg" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      Kết quả tìm kiếm
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Tìm thấy {searchResults.length} yêu cầu máu phù hợp
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-500">Khoảng cách tối đa</div>
+                  <div className="text-2xl font-bold text-green-600">{filters.maxDistance}km</div>
+                </div>
+              </div>
             </div>
-          </div>
+
+            {/* Blood Request Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {searchResults.map((result) => (
+                <div key={result.emergencyId || result.id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden">
+                  {/* Header */}
+                  <div className="bg-gradient-to-r from-red-500 to-red-600 p-4 text-white">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-white/20 rounded-full p-2">
+                          <FaTint className="text-white text-lg" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-bold">Yêu cầu #{result.emergencyId || result.id}</h4>
+                          <p className="text-red-100 text-sm">Cần máu khẩn cấp</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold">{result.bloodType}</div>
+                        <div className="text-xs text-red-100">Nhóm máu</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-6">
+                    {/* Blood Info */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="bg-red-100 rounded-full p-2">
+                          <FaTint className="text-red-600" />
+                        </div>
+                        <div>
+                          <div className="text-sm text-gray-500">Số lượng cần</div>
+                          <div className="text-xl font-bold text-red-600">{result.requiredUnits} ml</div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-gray-500">Khoảng cách</div>
+                        <div className="text-lg font-semibold text-gray-900">{result.distanceText}</div>
+                        <div className="text-xs text-gray-400">{result.durationText}</div>
+                      </div>
+                    </div>
+
+                    {/* Hospital Info */}
+                    <div className="bg-blue-50 rounded-lg p-4 mb-4">
+                      <div className="flex items-start space-x-3">
+                        <div className="bg-blue-100 rounded-full p-2">
+                          <FaHospital className="text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h5 className="font-semibold text-gray-900 mb-1">{result.hospitalName}</h5>
+                          <p className="text-sm text-gray-600 mb-2">{result.hospitalAddress}</p>
+                          <div className="flex items-center space-x-4 text-xs text-gray-500">
+                            <span>📞 {result.hospitalPhone}</span>
+                            <span>📅 {new Date(result.emergencyDate).toLocaleDateString('vi-VN')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* User Info */}
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <div className="flex items-start space-x-3">
+                        <div className="bg-gray-100 rounded-full p-2">
+                          <FaUser className="text-gray-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h5 className="font-semibold text-gray-900 mb-1">Thông tin người yêu cầu</h5>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center space-x-2">
+                              <span className="text-gray-500">👤 Người yêu cầu:</span>
+                              <span className="font-medium text-gray-900">{result.username}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-gray-500">📅 Ngày yêu cầu:</span>
+                              <span className="font-medium text-gray-900">{new Date(result.emergencyDate).toLocaleDateString('vi-VN')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Note */}
+                    {result.emergencyNote && (
+                      <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
+                        <div className="flex items-start space-x-2">
+                          <FaInfoCircle className="text-yellow-600 mt-0.5" />
+                          <div>
+                            <h6 className="font-semibold text-yellow-800 mb-1">Ghi chú</h6>
+                            <p className="text-sm text-yellow-700">{result.emergencyNote}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Status */}
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                          result.emergencyStatus === 'Đã xét duyệt' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          <FaCheckCircle className="mr-1" />
+                          {result.emergencyStatus}
+                        </span>
+                        <div className="text-xs text-gray-500">
+                          Cập nhật: {new Date(result.emergencyDate).toLocaleDateString('vi-VN')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

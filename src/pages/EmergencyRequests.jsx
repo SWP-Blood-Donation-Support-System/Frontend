@@ -577,6 +577,8 @@ const EmergencyRequests = () => {
     }
   };
 
+  // Bỏ hàm handleRespond vì không còn sử dụng
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'Đã duyệt':
@@ -757,7 +759,7 @@ const EmergencyRequests = () => {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div className="flex items-center space-x-2">
-                                  {emergency.emergencyStatus === 'Lượng máu đang được chuyển đến' && (
+                                  {(emergency.emergencyStatus === 'Lượng máu đang được chuyển đến' || emergency.emergencyStatus === 'Đã xét duyệt') && (
                                     <button 
                                       onClick={() => handleMarkAsFulfilled(emergency.emergencyId)}
                                       className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors duration-200"

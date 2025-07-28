@@ -416,7 +416,7 @@ const EmergencyManagement = () => {
                           {item.emergencyDate ? (
                             <div>
                               <div className="font-medium">{new Date(item.emergencyDate).toLocaleDateString('vi-VN')}</div>
-                              <div className="text-sm text-gray-500">{new Date(item.emergencyDate).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
+       
                             </div>
                           ) : (
                             <span className="text-gray-400">Chưa có</span>

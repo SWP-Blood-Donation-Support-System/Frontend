@@ -168,19 +168,7 @@ const Dashboard = () => {
               <p className="text-gray-600 mt-1">Xin chào, {user.name || user.email}</p>
             </div>
             <div className="flex items-center space-x-3">
-              <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-white rounded-lg transition-colors">
-                <FaBell className="text-xl" />
-              </button>
-              <button 
-                onClick={() => {
-                  logout();
-                  navigate('/login');
-                }}
-                className="flex items-center px-4 py-2 bg-white rounded-lg shadow-sm hover:shadow-md transition-all duration-200 text-gray-700 hover:text-red-600"
-              >
-                <FaSignOutAlt className="mr-2" />
-                Đăng xuất
-              </button>
+             
             </div>
           </div>
         </div>

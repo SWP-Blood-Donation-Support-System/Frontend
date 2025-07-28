@@ -88,81 +88,9 @@ const Navbar = () => {
     }
   };
 
-  const markAsRead = async (notificationId) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Notification/MarkAsRead/${notificationId}`, {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      
-      if (response.ok) {
-        // Cập nhật trạng thái local - đánh dấu tất cả recipients đã phản hồi
-        setNotifications(prev => 
-          prev.map(n => 
-            n.notificationId === notificationId 
-              ? { 
-                  ...n, 
-                  recipients: n.recipients?.map(r => ({ ...r, responseStatus: 'Đã xử lý' }))
-                } 
-              : n
-          )
-        );
-        // Cập nhật số thông báo chưa đọc
-        const updatedNotifications = notifications.map(n => 
-          n.notificationId === notificationId 
-            ? { 
-                ...n, 
-                recipients: n.recipients?.map(r => ({ ...r, responseStatus: 'Đã xử lý' }))
-              } 
-            : n
-        );
-        const newUnreadCount = updatedNotifications.filter(n => 
-          n.recipients && n.recipients.some(r => r.responseStatus === 'Chưa phản hồi')
-        ).length;
-        setUnreadCount(newUnreadCount);
-      }
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
-  };
+  // Bỏ hàm markAsRead vì không còn sử dụng cho User role
 
-  const handleUserResponse = async (notificationId, response) => {
-    try {
-      const token = localStorage.getItem('token');
-      const responseData = {
-        notificationId: notificationId,
-        response: response // 'accept' hoặc 'decline'
-      };
 
-      const apiResponse = await fetch('https://blooddonationsystemm-awg3bvdufaa6hudc.southeastasia-01.azurewebsites.net/api/Notification/RespondToNotification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(responseData),
-      });
-
-      if (apiResponse.ok) {
-        // Cập nhật trạng thái local
-        setUserNotifications(prev => 
-          prev.map(n => 
-            n.notificationId === notificationId 
-              ? { ...n, responseStatus: response === 'accept' ? 'Chấp nhận' : 'Từ chối' }
-              : n
-          )
-        );
-        // Cập nhật số thông báo chưa đọc
-        const newUnreadCount = userNotifications.filter(n => n.responseStatus === 'Chưa phản hồi').length;
-        setUserUnreadCount(Math.max(0, newUnreadCount - 1));
-      }
-    } catch (error) {
-      console.error('Error responding to notification:', error);
-    }
-  };
 
   const handleLogout = () => {
     logout();
@@ -300,15 +228,7 @@ const Navbar = () => {
                                          
                                         </div>
                                       </div>
-                                      {hasUnresponded && (
-                                        <button
-                                          onClick={() => markAsRead(notification.notificationId)}
-                                          className="ml-2 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors duration-200"
-                                          title="Đánh dấu đã xử lý"
-                                        >
-                                          <FaCheck className="text-xs" />
-                                        </button>
-                                      )}
+                                      {/* Bỏ button markAsRead cho User role */}
                                     </div>
                                   </div>
                                 );
@@ -400,32 +320,20 @@ const Navbar = () => {
                                     </div>
                                     
                                     <div className="flex items-center justify-between">
-                                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                        notification.responseStatus === 'Chấp nhận' 
-                                          ? 'bg-green-100 text-green-800' 
-                                          : notification.responseStatus === 'Từ chối'
-                                          ? 'bg-red-100 text-red-800'
-                                          : 'bg-yellow-100 text-yellow-800'
-                                      }`}>
-                                        {notification.responseStatus}
-                                      </span>
-                                      
-                                      {notification.responseStatus === 'Chưa phản hồi' && (
-                                        <div className="flex space-x-2">
-                                          <button
-                                            onClick={() => handleUserResponse(notification.notificationId, 'accept')}
-                                            className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                                          >
-                                            Chấp nhận
-                                          </button>
-                                          <button
-                                            onClick={() => handleUserResponse(notification.notificationId, 'decline')}
-                                            className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
-                                          >
-                                            Từ chối
-                                          </button>
-                                        </div>
+                                      {/* Chỉ hiển thị status cho Admin/Staff, không hiển thị cho User */}
+                                      {(user?.role === 'Admin' || user?.role === 'Staff') && (
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                          notification.responseStatus === 'Chấp nhận' 
+                                            ? 'bg-green-100 text-green-800' 
+                                            : notification.responseStatus === 'Từ chối'
+                                            ? 'bg-red-100 text-red-800'
+                                            : 'bg-yellow-100 text-yellow-800'
+                                        }`}>
+                                          {notification.responseStatus}
+                                        </span>
                                       )}
+                                      
+                                                            {/* Bỏ hoàn toàn buttons cho User */}
                                     </div>
                                   </div>
                                 </div>
@@ -575,15 +483,7 @@ const Navbar = () => {
                           </span>
                         </div>
                       </div>
-                      {hasUnresponded && (
-                        <button
-                          onClick={() => markAsRead(notification.notificationId)}
-                          className="ml-2 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded transition-colors duration-200"
-                          title="Đánh dấu đã xử lý"
-                        >
-                          <FaCheck className="text-xs" />
-                        </button>
-                      )}
+                      {/* Bỏ button markAsRead cho User role */}
                     </div>
                   </div>
                 );
@@ -628,32 +528,20 @@ const Navbar = () => {
                     </div>
                     
                     <div className="flex items-center justify-between">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        notification.responseStatus === 'Chấp nhận' 
-                          ? 'bg-green-100 text-green-800' 
-                          : notification.responseStatus === 'Từ chối'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {notification.responseStatus}
-                      </span>
-                      
-                      {notification.responseStatus === 'Chưa phản hồi' && (
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleUserResponse(notification.notificationId, 'accept')}
-                            className="px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                          >
-                            Chấp nhận
-                          </button>
-                          <button
-                            onClick={() => handleUserResponse(notification.notificationId, 'decline')}
-                            className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
-                          >
-                            Từ chối
-                          </button>
-                        </div>
+                      {/* Chỉ hiển thị status cho Admin/Staff, không hiển thị cho User */}
+                      {(user?.role === 'Admin' || user?.role === 'Staff') && (
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          notification.responseStatus === 'Chấp nhận' 
+                            ? 'bg-green-100 text-green-800' 
+                            : notification.responseStatus === 'Từ chối'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {notification.responseStatus}
+                        </span>
                       )}
+                      
+                      {/* Bỏ hoàn toàn buttons cho User */}
                     </div>
                   </div>
                 </div>
